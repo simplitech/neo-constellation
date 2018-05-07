@@ -1,0 +1,1 @@
+aws s3 sync s3://$BUCKETNAME/neo/config/ /home/ec2-user/neo-cli/neo-cli/ 2>&1  >>/home/ec2-user/crontaboutput.txt
