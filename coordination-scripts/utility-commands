@@ -1,0 +1,9 @@
+
+# This is being used as a refences. These commands should be executed by the user browser. 
+
+# Send a command to the instance telling it to synchronize it's configuration files
+aws ssm send-command --instance-ids i-0806488a8542b46c9 --document-name "AWS-RunShellScript" --comment "Configuration files Synchronization" --parameters "commands=/home/ec2-user/scripts/aws-sync.sh" --output text
+
+
+# Get an instance public ip address
+aws ec2 describe-instances --instance-ids $INSTANCE_ID --query 'Reservations[*].Instances[*].PublicIpAddress' --output text
