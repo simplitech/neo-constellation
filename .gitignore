@@ -58,3 +58,20 @@ typings/
 .env
 
 *.DS_Store
+
+/dist
+
+# local env files
+.env.local
+.env.*.local
+
+# Log files
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw*
