@@ -1,5 +1,17 @@
 @import "function";
 
+.pal-purple-4c {
+  @include palette(#21084C);
+}
+
+.pal-purple-67 {
+  @include palette(#3B0967);
+}
+
+.pal-purple-ee {
+  @include palette(#968BEE);
+}
+
 .pal-navy {
   @include palette(#00242f);
 }

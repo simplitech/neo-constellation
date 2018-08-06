@@ -131,5 +131,14 @@ export default {
   },
 
   view: {
+    login: {
+      title: 'Neo Coordinator',
+      form: {
+        accessKey: 'AWS Access Key',
+        accessSecret: 'AWS Access Secret',
+        keepLogged: 'Keep me logged in',
+        submit: 'Login',
+      },
+    },
   },
 }

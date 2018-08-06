@@ -2,6 +2,7 @@
 @import "palette";
 @import "font";
 @import "vendor";
+@import "neo_coordinator";
 @import "~normalize-scss/sass/normalize";
 @import "~linelay/build.scss";
 @import "~hover.css/scss/hover";
@@ -44,7 +45,7 @@ html {
 }
 
 body {
-  @extend .pal-navy.bg;
+  @extend .pal-purple-4c.bg;
   min-height: 100vh;
   margin: 0;
 }
@@ -249,6 +250,99 @@ section {
 }
 
 form {
+  .form-group {
+    @include verti();
+    margin-bottom: 16px;
+
+    &.required .control-label:after {
+      content: "*";
+      color: red;
+    }
+
+    .control-label {
+      margin-bottom: 4px;
+    }
+
+    .form-control {
+      width: 100%;
+    }
+
+    .multiselect-label {
+      font-weight: bold;
+    }
+  }
+}
+
+button, input[type=submit], .btn {
+  @extend .pal-purple-67.bg;
+  @extend .pal-white-69.text;
+
+  border: none;
+  text-transform: uppercase;
+  user-select: none;
+  height: 35px;
+  line-height: 35px;
+  border-radius: 4px;
+  min-width: 90px;
+  outline: none;
+  cursor: pointer;
+  padding: 0 10px;
+  font-size: 100%;
+  display: inline-block;
+  text-decoration: none;
+  text-align: center;
+  transition: background 0.4s ease-out, box-shadow 0.4s ease-out, color 0.4s ease-out;
+  margin: 3px;
+
+  &:hover {
+    @extend .pal-purple-ee.bg;
+    @extend .pal-white.text;
+  }
+
+  &[disabled] {
+    color: #999;
+    cursor: default;
+  }
+  &:hover[disabled] {
+    background: none;
+    box-shadow: none;
+  }
+
+  &.small {
+    height: 25px;
+    line-height: 25px;
+    min-width: 60px;
+    font-size: 80%;
+    padding: 0 5px;
+  }
+}
+
+input:not([type=submit]):not([type=checkbox]):not([type=radio]), select, textarea {
+  @extend .pal-white-69.border;
+  @extend .pal-white-69.text;
+
+  &::placeholder {
+    @extend .pal-warm-grey.text;
+  }
+
+  background: none;
+  width: auto;
+  height: 32px;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  border-bottom-width: 2px;
+  border-bottom-style: solid;
+  outline: none;
+  padding: 2px 5px;
+  vertical-align: middle;
+  font-size: 1.2em;
+  transition: border-color 0.4s ease-out, color 0.4s ease-out;
+
+  &:focus {
+    @extend .pal-purple-ee.border;
+    @extend .pal-purple-ee.text;
+  }
 }
 
 footer {
@@ -296,7 +390,7 @@ button, .btn {
 h1, h2, h3, h4, h5, h6, p, a {
   @extend .font-open-sans;
   @extend .f-300;
-  @extend .pal-white.text;
+  @extend .pal-purple-ee.text;
 
   font-style: normal;
   font-stretch: normal;
@@ -306,22 +400,22 @@ h1, h2, h3, h4, h5, h6, p, a {
 
 h1 {
   margin: .8rem 0;
-  font-size: 54px;
+  font-size: 36px;
 
   @media only screen and (max-width: $display-large) {
-    font-size: 42px;
+    font-size: 32px;
   }
 
   @media only screen and (max-width: $display-medium) {
-    font-size: 32px;
+    font-size: 26px;
   }
 }
 h2 {
   margin: .5rem 0;
-  font-size: 48px;
+  font-size: 32px;
 
   @media only screen and (max-width: $display-large) {
-    font-size: 36px;
+    font-size: 28px;
   }
 
   @media only screen and (max-width: $display-medium) {
@@ -330,7 +424,7 @@ h2 {
 }
 h3 {
   margin: .4rem 0;
-  font-size: 30px;
+  font-size: 28px;
 
   @media only screen and (max-width: $display-large) {
     font-size: 24px;
