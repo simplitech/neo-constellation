@@ -1,0 +1,18 @@
+
+@mixin palette($hex)  {
+  &.bg {
+    background: $hex;
+  }
+  &.text {
+    color: $hex;
+  }
+  &.border {
+    border-color: $hex;
+  }
+  &.box-shadow {
+    box-shadow: 0 0 2px $hex;
+  }
+  &.text-shadow {
+    text-shadow: 0 2px 4px $hex;
+  }
+}

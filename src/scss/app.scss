@@ -1,0 +1,412 @@
+@import "variable";
+@import "palette";
+@import "font";
+@import "vendor";
+@import "~normalize-scss/sass/normalize";
+@import "~linelay/build.scss";
+@import "~hover.css/scss/hover";
+
+.material {
+  @import "~vue-snotify/styles/material.scss";
+}
+
+.simple {
+  @import "~vue-snotify/styles/simple.scss";
+}
+
+.dark {
+  @import "~vue-snotify/styles/dark.scss";
+}
+
+.fade-enter-active, .fade-leave-active,
+.fade-y-enter-active, .fade-y-leave-active {
+  transition: opacity ease-out .4s, transform ease-out .4s;
+}
+.fade-enter, .fade-leave-to,
+.fade-y-enter, .fade-y-leave-to {
+  opacity: 0;
+}
+.fade-y-enter, .fade-y-leave-to {
+  transform: translateY(-20px);
+}
+
+.fade-x-enter-active, .fade-x-leave-active {
+  transition: opacity ease-out .4s, transform ease-out .4s;
+}
+.fade-x-enter, .fade-x-leave-to {
+  transform: translateX(100vw);
+}
+
+html {
+  @extend .font-open-sans;
+  @extend .f-light;
+  @extend .pal-black.text;
+}
+
+body {
+  @extend .pal-navy.bg;
+  min-height: 100vh;
+  margin: 0;
+}
+
+nav {
+  @extend .pal-black-0-50.bg;
+  @extend .f-bold;
+
+  transition: background-color ease-in-out 0.5s;
+
+  position: fixed;
+  z-index: 91;
+  top: -100vh;
+  padding-top: 100vh;
+  width: 100vw;
+  height: 80px;
+
+  display: flex;
+  align-content: center;
+
+  .brand {
+    margin: 16px 24px;
+
+    .btn {
+      @extend .hvr-grow;
+
+      padding: 0;
+      background: none;
+
+      &:hover, &:focus {
+        background: none;
+        box-shadow: none;
+      }
+
+      img {
+        width: 150px;
+      }
+    }
+
+    @media screen and (max-width: $display-medium) {
+      flex: 1;
+    }
+  }
+  .menu {
+    flex: 1;
+    margin: auto 12px;
+
+    @media screen and (max-width: $display-medium) {
+      display: none;
+    }
+  }
+  .link {
+    flex: 0 auto;
+    margin: auto 12px;
+    img {
+      width: 20px;
+      height: 20px;
+    }
+    li {
+      margin: auto 2px;
+    }
+
+    @media screen and (max-width: $display-large) {
+      display: none;
+    }
+  }
+  .lang {
+    flex: 0 auto;
+    margin: auto 12px;
+    img {
+      width: 20px;
+      height: 20px;
+    }
+    li {
+      margin: auto 2px;
+    }
+
+    @media screen and (max-width: $display-large) {
+      display: none;
+    }
+  }
+
+  .menu-icon {
+    flex: 0 auto;
+    margin: auto 16px;
+
+    button {
+      background: none;
+
+      img {
+        width: 20px;
+        height: 20px;
+      }
+    }
+
+    @media screen and (min-width: $display-large) {
+      display: none;
+    }
+  }
+
+  ul {
+    display: inline-flex;
+    align-items: center;
+
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    height: 100%;
+
+    li {
+      margin: auto 4px;
+      height: 100%;
+
+      button, .btn {
+        @extend .pal-white-50.text;
+
+        background: none;
+        font-size: 16px;
+        height: 100%;
+
+        &:hover {
+          @extend .pal-white.text;
+        }
+        &.active {
+          @extend .pal-white.text;
+        }
+      }
+    }
+  }
+
+  &.sidebar {
+    @extend .pal-navy-90.bg;
+    @extend .pal-black.box-shadow;
+
+    padding-top: 0;
+    height: auto;
+    min-height: 100vh;
+
+    top: 0;
+    right: 0;
+    z-index: 93;
+
+    width: 50%;
+    max-width: 350px;
+    min-width: 250px;
+
+    flex-direction: column;
+
+    .brand {
+      flex: 0;
+      text-align: center;
+      .btn {
+        margin: 0;
+        line-height: 0;
+      }
+    }
+    .menu {
+      display: flex;
+      align-items: center;
+
+      ul {
+        display: block;
+        width: 100%;
+        li {
+          margin: 0;
+        }
+      }
+    }
+    .link {
+      display: flex;
+      justify-content: center;
+    }
+    .lang {
+      display: flex;
+      justify-content: center;
+    }
+    .menu-icon {
+      display: block
+    }
+  }
+
+}
+
+aside {
+  position: relative;
+  z-index: 9999;
+  .outbound {
+    @extend .pal-black-0-80.bg;
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 92;
+  }
+}
+
+main {
+}
+
+section {
+}
+
+form {
+}
+
+footer {
+}
+
+button, .btn {
+  @extend .font-open-sans;
+  @extend .f-600;
+  @extend .pal-black-0-23.bg;
+  @extend .pal-white-69.text;
+
+  transition: background-color ease-out 0.4s, color ease-out 0.4s;
+  border: none;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+
+  padding: 6px 16px;
+  margin: 0 2px 4px 2px;
+
+  font-size: 14px;
+  font-style: normal;
+  font-stretch: normal;
+  line-height: normal;
+  letter-spacing: normal;
+  border-radius: 8px;
+  outline: none;
+
+  &.icon {
+    line-height: 0;
+    padding: 10px;
+    border-radius: 50%;
+  }
+
+  &:hover {
+    @extend .pal-black-0-50.bg;
+    @extend .pal-white.text;
+  }
+  &:focus {
+    @extend .pal-white.box-shadow;
+    @extend .pal-white.text;
+  }
+}
+
+h1, h2, h3, h4, h5, h6, p, a {
+  @extend .font-open-sans;
+  @extend .f-300;
+  @extend .pal-white.text;
+
+  font-style: normal;
+  font-stretch: normal;
+  line-height: normal;
+  letter-spacing: normal;
+}
+
+h1 {
+  margin: .8rem 0;
+  font-size: 54px;
+
+  @media only screen and (max-width: $display-large) {
+    font-size: 42px;
+  }
+
+  @media only screen and (max-width: $display-medium) {
+    font-size: 32px;
+  }
+}
+h2 {
+  margin: .5rem 0;
+  font-size: 48px;
+
+  @media only screen and (max-width: $display-large) {
+    font-size: 36px;
+  }
+
+  @media only screen and (max-width: $display-medium) {
+    font-size: 24px;
+  }
+}
+h3 {
+  margin: .4rem 0;
+  font-size: 30px;
+
+  @media only screen and (max-width: $display-large) {
+    font-size: 24px;
+  }
+
+  @media only screen and (max-width: $display-medium) {
+    font-size: 20px;
+  }
+}
+h4 {
+  margin: .4rem 0;
+  font-size: 24px;
+
+  @media only screen and (max-width: $display-large) {
+    font-size: 20px;
+  }
+
+  @media only screen and (max-width: $display-medium) {
+    font-size: 16px;
+  }
+}
+
+.container {
+  margin: auto 80px;
+
+  &.wide {
+    margin: auto 200px;
+  }
+
+  @media only screen and (max-width: $display-large) {
+    &.center-mobile {
+      text-align: center;
+    }
+
+    margin: auto 40px;
+    &.wide {
+      margin: auto 100px;
+    }
+  }
+
+  @media only screen and (max-width: $display-medium) {
+    &.center-mobile {
+      text-align: center;
+    }
+
+    margin: auto 10px;
+    &.wide {
+      margin: auto 20px;
+    }
+  }
+}
+
+.row {
+  max-width: calc(100% + 16px);
+  margin: -8px;
+  margin-bottom: 8px;
+
+  .col {
+    padding: 8px;
+  }
+
+  &.compact {
+    margin: -4px;
+    margin-bottom: 4px;
+
+    .col {
+      padding: 4px;
+    }
+  }
+
+  @media screen and (max-width: $display-small) {
+    margin: -2px;
+    margin-bottom: 2px;
+
+    .col {
+      padding: 2px;
+    }
+  }
+}

@@ -1,6 +1,6 @@
 {
-  "name": "webapp",
-  "short_name": "webapp",
+  "name": "NEO Cordinator",
+  "short_name": "neo",
   "icons": [
     {
       "src": "/img/icons/android-chrome-192x192.png",
