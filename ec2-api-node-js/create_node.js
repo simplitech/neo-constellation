@@ -72,7 +72,7 @@ async function createNode(networkId, region) {
   instanceParams.ImageId = values[0]
   instanceParams.SecurityGroupIds = [values[1]]
 
-  await _runInstance()
+  return await _runInstance()
 }
 
 function _init(networkId, region) {

@@ -6,7 +6,6 @@ var EC2
 
 var _region
 var _networkId
-var _groupName
 var _nodeList = []
 
 var instanceParams = {
@@ -40,17 +39,15 @@ async function listNodes(networkId) {
        })
      }
    }
- 
-   for (let i = 0; i < _nodeList.length; i++) {
-     console.log(i, _nodeList[i])
-   }
+
+   return _nodeList
+
  }
 
 function _init(networkId) {
 
-  _region = "us-east-2"
+  _region = "us-east-1"
   _networkId = networkId
-  _groupName = `network-${_networkId}-sg`
   instanceParams.Filters[0].Values = [networkId.toString()]
 
   AWS.config.update({
