@@ -1,5 +1,5 @@
 var builder = require('./create_node')
+var reader = require('./list_node')
 
-builder.init(networkId = 1, region = 'us-east-2')
-builder.create()  
-
+builder.create(1, "us-east-2")
+reader.list(1)
