@@ -11,7 +11,7 @@ import 'moment/locale/pt-br'
 /*
  *** SET HERE THE DEFAULT LANGUAGE ***
  */
-export const defaultLang = (localStorage.getItem('lang') || process.env.VUE_APP_LANG) as Lang
+export const defaultLang = process.env.VUE_APP_LANG as Lang
 
 /*
  *** SET HERE THE DEFAULT CURRENCY ***
