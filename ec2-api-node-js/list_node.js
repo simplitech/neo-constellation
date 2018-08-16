@@ -1,12 +1,9 @@
+var API = require('./api_default')
 module.exports.list = listNodes
 
-// Load the SDK
-var AWS = require('aws-sdk')
-var EC2
-
-var _region
-var _networkId
+var _EC2
 var _nodeList = []
+var _promiseList = []
 
 var instanceParams = {
   Filters: [
@@ -23,70 +20,41 @@ async function listNodes(networkId) {
  
    _init(networkId)
  
-   regionList = await _getRegionList()
+   regionList = await API.getRegionList()
    
    for (let i = 0; i < regionList.length; i++) {
-     region = regionList[i]
-     var data = await _getNodesPerRegion(region)
- 
-     if (data[1].length > 0) {
-       data[1].forEach(e => {
-         if (e.Instances && e.Instances.length > 0) {
-           e.Instances.forEach(i => {
-             _nodeList.push([data[0], i.InstanceId])
-           })
-         }
-       })
-     }
+    region = regionList[i]
+    var regionalEC2 = API.getEC2(region)
+    _promiseList.push(_getNodesPerRegion(regionalEC2, region))
    }
 
-   return _nodeList
+   var values = await Promise.all(_promiseList)
 
+   values.forEach(v => {
+    if (v[1].length > 0) {
+      v[1].forEach(e => {
+        if (e.Instances && e.Instances.length > 0) {
+          e.Instances.forEach(i => {
+            _nodeList.push([v[0], i.InstanceId])
+          })
+        }
+      })
+    }
+  })
+
+   return _nodeList
  }
 
 function _init(networkId) {
 
-  _region = "us-east-1"
   _networkId = networkId
+  _EC2 = API.getEC2()
+
   instanceParams.Filters[0].Values = [networkId.toString()]
 
-  AWS.config.update({
-    region: _region
-  })
-
-  EC2 = new AWS.EC2()
-
 }
 
-function _changeRegion(region) {
-  _region = region
-
-  AWS.config.update({
-    region: _region
-  })
-
-  EC2 = new AWS.EC2()
-}
-
-async function _getRegionList() {
-  try {
-    var data = await EC2.describeRegions().promise()
-  
-    result = []
-  
-    data.Regions.forEach(r => {
-      result.push(r.RegionName)
-    })
-  
-    return result
-  }
-  catch {
-    console.log(err, err.stack)
-  }
-}
-
-async function _getNodesPerRegion(region) {
-  _changeRegion(region)
-  var data = await EC2.describeInstances(instanceParams).promise()
+async function _getNodesPerRegion(regionalEC2, region) {
+  var data = await regionalEC2.describeInstances(instanceParams).promise()
   return [region, data.Reservations]
 }
