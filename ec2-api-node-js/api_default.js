@@ -7,6 +7,7 @@ _AWS.config.update({
 var _EC2 = new _AWS.EC2()
 var _S3 = new _AWS.S3()
 
+module.exports.login = login
 module.exports.getEC2 = getNewEC2FromRegion
 module.exports.getS3 = getDefaultS3
 module.exports.getRegionList = getRegionList
@@ -17,7 +18,17 @@ module.exports.runInstance = runInstance
 module.exports.createKeyPair = createKeyPair
 module.exports.getKeyPair = getKeyPair
 
+
 module.exports.testGetObject = _getObject
+
+function login(credentials) {
+
+  _AWS.config.update({
+    accessKeyId: credentials.accessKeyId,
+    secretAccessKey: credentials.secretAccessKey
+  })
+
+}
 
 function getNewEC2FromRegion(region) {
 
@@ -38,15 +49,7 @@ function getDefaultS3() {
 }
 
 async function getRegionList() {
-  var data = await _EC2.describeRegions().promise()
-
-  result = []
-
-  data.Regions.forEach(r => {
-    result.push(r.RegionName)
-  })
-
-  return result
+  return await _EC2.describeRegions().promise()
 }
 
 async function getAmiId(regionalEC2 = _EC2) {
@@ -60,8 +63,7 @@ async function getAmiId(regionalEC2 = _EC2) {
     ]
   }
 
-  var data = await regionalEC2.describeImages(params).promise()
-  return data.Images[0].ImageId
+  return await regionalEC2.describeImages(params).promise()
 }
 
 async function getSecurityGroupByName(name, regionalEC2 = _EC2) {
@@ -75,25 +77,22 @@ async function getSecurityGroupByName(name, regionalEC2 = _EC2) {
     ]
   }
 
-  var data = await regionalEC2.describeSecurityGroups(params).promise()
-
-  if(data.SecurityGroups && data.SecurityGroups.length > 0){
-    return data.SecurityGroups[0].GroupId
-  } else {
-    return undefined
-  }
+  return await regionalEC2.describeSecurityGroups(params).promise()
 }
 
 async function createSecurityGroup(name, regionalEC2 = _EC2) {
 
+  var vpcData = await _getDefaultVpc(regionalEC2)
+  var vpcId = vpcData.Vpcs[0].VpcId 
+
   var params = {
     GroupName: name,
     Description: name,
-    VpcId: await _getDefaultVpc(regionalEC2)
+    VpcId: vpcId
   }
 
   var data = await regionalEC2.createSecurityGroup(params).promise()
-  return data.GroupId
+  return data
 }
 
 async function runInstance(networkId, securityGroupId, amiId, regionalEC2 = _EC2) {
@@ -125,25 +124,9 @@ async function runInstance(networkId, securityGroupId, amiId, regionalEC2 = _EC2
     ]
   }
 
-  var data = await regionalEC2.runInstances(params).promise()
-  var instanceId = data.Instances[0].InstanceId
+  return data = await regionalEC2.runInstances(params).promise()
 
-  var waitParams = {
-    Filters: [
-      {
-        Name: "instance-id", 
-        Values: [instanceId]
-      }
-    ]
   }
-
-  console.log("Creating...")
-
-  await regionalEC2.waitFor('instanceRunning',waitParams).promise()
-
-  console.log(`Created instance #${instanceId}`)
-  return instanceId
-}
 
 async function getKeyPair(name, regionalEC2) {
   var params = {
@@ -155,17 +138,13 @@ async function getKeyPair(name, regionalEC2) {
     ]
   }
 
-  var data = await regionalEC2.describeKeyPairs(params).promise()
+  return await regionalEC2.describeKeyPairs(params).promise()
 
-  if (data.KeyPairs && data.KeyPairs.length > 0) {
-    return data.KeyPairs[0].KeyName
-  }
-
-  return undefined
 }
 
 async function createKeyPair(name, user, regionalEC2) {
-  var privateKey = await _getObject(name + ".pem", "neo-bucket-" + user)
+  var privateKey = await _getObject(name + ".pem", "neo-bucket-" + user).Body
+  var data
 
   if (privateKey) {
     var publicKey = new _NodeRSA(privateKey).exportKey('public').slice(27,-25)
@@ -175,28 +154,37 @@ async function createKeyPair(name, user, regionalEC2) {
       PublicKeyMaterial: publicKey
     }
 
-    var data = await regionalEC2.importKeyPair(importParams).promise()
+    data = await regionalEC2.importKeyPair(importParams).promise()
   } else {
 
     var createParams = {
       KeyName: name
     }
 
-    var data = await regionalEC2.createKeyPair(createParams).promise()
+    data = await regionalEC2.createKeyPair(createParams).promise()
     var privateKey = data.KeyMaterial
 
     await _createBucket("neo-bucket-" + user)
     await _putObject(name + ".pem", privateKey, "neo-bucket-" + user)
-
-    return name
   }
+
+  return data
 }
 
 // Internal functions
 
 async function _getDefaultVpc(regionalEC2) {
-  var data = await regionalEC2.describeVpcs(vpcGetParams).promise()
-  return data.Vpcs[0].VpcId
+  var params = {
+    Filters: [
+      {
+        Name: 'isDefault',
+        Values: ['true']
+      }
+    ]
+  }
+
+  var data = await regionalEC2.describeVpcs(params).promise()
+  return data
 }
 
 async function _getObject(object, bucket) {
@@ -205,11 +193,7 @@ async function _getObject(object, bucket) {
       Bucket: bucket, 
       Key: object
     }
-    var data = await _S3.getObject(params).promise()
-    console.log(data)
-    if (data.Body) {
-      return data.Body
-    }
+    return data = await _S3.getObject(params).promise()
   }
   catch (error){
     if (error.code == "NoSuchBucket" || error.code == "NoSuchKey") {

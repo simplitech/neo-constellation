@@ -20,7 +20,13 @@ async function listNodes(networkId) {
  
    _init(networkId)
  
-   regionList = await API.getRegionList()
+   result = await API.getRegionList()
+
+   regionList = []
+
+   result.Regions.forEach(r => {
+    regionList.push(r.RegionName)
+  })
    
    for (let i = 0; i < regionList.length; i++) {
     region = regionList[i]
@@ -28,21 +34,8 @@ async function listNodes(networkId) {
     _promiseList.push(_getNodesPerRegion(regionalEC2, region))
    }
 
-   var values = await Promise.all(_promiseList)
+   return await Promise.all(_promiseList)
 
-   values.forEach(v => {
-    if (v[1].length > 0) {
-      v[1].forEach(e => {
-        if (e.Instances && e.Instances.length > 0) {
-          e.Instances.forEach(i => {
-            _nodeList.push([v[0], i.InstanceId])
-          })
-        }
-      })
-    }
-  })
-
-   return _nodeList
  }
 
 function _init(networkId) {
@@ -56,5 +49,5 @@ function _init(networkId) {
 
 async function _getNodesPerRegion(regionalEC2, region) {
   var data = await regionalEC2.describeInstances(instanceParams).promise()
-  return [region, data.Reservations]
+  return [region, data]
 }
