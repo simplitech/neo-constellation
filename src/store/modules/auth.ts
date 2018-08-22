@@ -35,17 +35,15 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param model format => model: { account, password } (non-encrypted)
    */
   signIn: async ({state, commit, getters}, model: Authentication) => {
+    const fetch = () => model.validate()
     // Show spinner while waiting validation (3000ms delay)
-    await $.await.run(() => model.validate(), 'login', 3000)
+    await $.await.run(fetch, 'login', 3000)
 
-    AWS.config.update({
-      region: 'us-east-1',
-      accessKeyId: model.accessKeyId!,
-      secretAccessKey: model.secretAccessKey!,
-    })
+    const {accessKeyId, secretAccessKey} = model
+    AWS.config.update({accessKeyId, secretAccessKey})
 
-    localStorage.setItem('accessKeyId', model.accessKeyId!)
-    localStorage.setItem('secretAccessKey', model.secretAccessKey!)
+    localStorage.setItem('accessKeyId', accessKeyId)
+    localStorage.setItem('secretAccessKey', secretAccessKey)
 
     commit(types.POPULATE)
 
@@ -67,14 +65,10 @@ const actions: ActionTree<AuthState, RootState> = {
    */
   auth: async ({dispatch, commit, getters}) => {
     commit(types.POPULATE)
+    const {isLogged, accessKeyId, secretAccessKey} = getters
 
-    if (getters.isLogged) {
-      AWS.config.update({
-        region: 'us-east-1',
-        accessKeyId: getters.accessKeyId,
-        secretAccessKey: getters.secretAccessKey,
-      })
-
+    if (isLogged) {
+      AWS.config.update({accessKeyId, secretAccessKey})
       state.eventListener.auth.forEach((item) => item())
     } else {
       commit(types.SET_UNAUTHENTICATED_PATH, $.route.path)
@@ -89,6 +83,10 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param showError
    */
   signOut: ({state, commit}, showError: boolean = false) => {
+    const accessKeyId = undefined
+    const secretAccessKey = undefined
+    AWS.config.update({accessKeyId, secretAccessKey})
+
     if (showError) errorAndPush('system.error.unauthorized', '/login')
     else push('/login')
 

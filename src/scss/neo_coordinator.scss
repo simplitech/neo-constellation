@@ -3,9 +3,18 @@
 .panel {
   @extend .pal-black-0-50.bg;
   @extend .pal-white-69.text;
-  border-radius: 10px;
+  border-radius: 6px;
   padding: 16px;
   margin: 8px;
+  border: 1px solid rgba(255,255,255,0.3);
+  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+
+  .panel-title {
+    font-weight: bold;
+    font-size: 16px;
+    letter-spacing: 1pt;
+    margin: 0 0 0.5rem 0;
+  }
 
   &.compressed {
     padding: 8px;

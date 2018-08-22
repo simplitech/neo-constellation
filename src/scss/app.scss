@@ -354,6 +354,15 @@ button, .btn {
   @extend .pal-black-0-23.bg;
   @extend .pal-white-69.text;
 
+  &.primary {
+    @extend .pal-purple-67.bg;
+
+    &:hover {
+      @extend .pal-purple-ee.bg;
+      @extend .pal-white.text;
+    }
+  }
+
   transition: background-color ease-out 0.4s, color ease-out 0.4s;
   border: none;
   cursor: pointer;

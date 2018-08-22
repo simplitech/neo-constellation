@@ -1,5 +1,6 @@
 import {$, Model, isLogged, accessKeyId} from '@/simpli'
-import {config, EC2, S3} from 'aws-sdk'
+import {EC2, S3} from 'aws-sdk'
+import {DescribeInstancesResult, Reservation, Tag} from 'aws-sdk/clients/ec2'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -12,10 +13,66 @@ export default class Node extends Model {
   static readonly DEFAULT_DEVICE_NAME = '/dev/sda1'
   static readonly DEFAULT_INSTANCE_TYPE = 't2.micro'
   static readonly DEFAULT_RESOURCE_TYPE = 'instance'
-  static readonly DEFAULT_ID_FIELD = 'uid'
+  static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
+
+  static async list(idNetwork?: string): Promise<Node[]> {
+    let payload = {
+      Filters: [
+        {
+          Name: `tag:${Node.DEFAULT_NETWORK_TAG}`,
+          Values: ['*'],
+        },
+      ],
+    }
+
+    if (idNetwork) {
+      payload = {
+        Filters: [
+          {
+            Name: `tag:${Node.DEFAULT_NETWORK_TAG}`,
+            Values: [idNetwork],
+          },
+        ],
+      }
+    }
+
+    const request = await new EC2().describeInstances(payload).promise()
+    const data = request.$response.data as DescribeInstancesResult
+
+    // Serialize response into Node list
+    if (data.Reservations) {
+      const nodes: Node[] = []
+
+      data.Reservations.forEach((item: Reservation) => {
+        const instance = item.Instances && item.Instances[0]
+
+        if (instance) {
+          const tag = (instance.Tags || [] as Tag[]).find((tag: Tag) => tag.Key === Node.DEFAULT_NETWORK_TAG)
+
+          const node = new Node()
+
+          if (tag) node.idNetwork = tag.Value as string
+          node.idInstance = instance.InstanceId || null
+          node.idImage = instance.ImageId || null
+          node.keyPair = instance.KeyName || null
+
+          // TODO: replace to Regex match (/network-\n*-sg/g)
+          if (instance.SecurityGroups && instance.SecurityGroups[0]) {
+            node.idSecurityGroup = instance.SecurityGroups[0].GroupName || null
+          }
+
+          nodes.push(node)
+        }
+      })
+
+      return nodes
+    }
+
+    return []
+  }
 
   // Unique ID
-  uid: string | null = null
+  idNetwork: string = shortid.generate()
 
   // Image ID
   idImage: string | null = null
@@ -28,30 +85,28 @@ export default class Node extends Model {
 
   ec2: EC2 = new EC2()
 
-  region: string | null = null
+  region: string = Node.DEFAULT_REGION
 
   keyPair: string | null = null
 
   get groupName() {
-    return `network-${this.uid}-sg`
+    return `network-${this.idNetwork}-sg`
   }
 
-  constructor(region: string = Node.DEFAULT_REGION) {
+  constructor(network?: string, region?: string) {
     super()
 
     // Auth required
     if (!isLogged()) throw new Error($.t('system.error.unauthorized'))
 
-    this.uid = shortid.generate()
-    this.region = region
+    if (network) this.idNetwork = network
+    if (region) this.region = region
   }
 
   async create(runOnCreate = false) {
-    const {uid, region, groupName} = this
+    const {idNetwork, groupName} = this
 
-    if (region) config.update({region})
-
-    if (!uid) throw new Error($.t('system.error.fieldNotDefined'))
+    if (!idNetwork) throw new Error($.t('system.error.fieldNotDefined'))
 
     await this.populateIdImage()
 
@@ -69,9 +124,9 @@ export default class Node extends Model {
   }
 
   async run() {
-    const {uid, idSecurityGroup, idImage, ec2, keyPair} = this
+    const {idNetwork, idSecurityGroup, idImage, ec2, keyPair} = this
 
-    if (!uid) throw new Error($.t('system.error.fieldNotDefined'))
+    if (!idNetwork) throw new Error($.t('system.error.fieldNotDefined'))
     if (!idSecurityGroup) throw new Error($.t('system.error.fieldNotDefined'))
     if (!idImage) throw new Error($.t('system.error.fieldNotDefined'))
     if (!keyPair) throw new Error($.t('system.error.fieldNotDefined'))
@@ -96,8 +151,8 @@ export default class Node extends Model {
           ResourceType: Node.DEFAULT_RESOURCE_TYPE,
           Tags: [
             {
-              Key: Node.DEFAULT_ID_FIELD,
-              Value: uid,
+              Key: Node.DEFAULT_NETWORK_TAG,
+              Value: idNetwork,
             },
           ],
         },

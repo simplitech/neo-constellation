@@ -1,4 +1,6 @@
 import {$} from '@/simpli'
+import Node from '@/model/Node'
+import AWS from 'aws-sdk'
 
 import PulseLoader from 'vue-spinner/src/PulseLoader.vue'
 import GridLoader from 'vue-spinner/src/GridLoader.vue'
@@ -45,3 +47,5 @@ $.modal.defaultTransition = 'fade-y'
 $.modal.defaultBackgroundTransition = 'fade'
 $.modal.defaultClosable = true
 $.modal.defaultCloseOutside = true
+
+AWS.config.update({region: Node.DEFAULT_REGION})
