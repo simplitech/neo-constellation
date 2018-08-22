@@ -1,5 +1,6 @@
-import Home from '@/views/Home.vue'
-import Login from '@/views/Login.vue'
+import DefaultPanelLayout from '@/views/layouts/DefaultPanelLayout.vue'
+import DashboardView from '@/views/DashboardView.vue'
+import LoginView from '@/views/LoginView.vue'
 
 /*
  *** SET HERE THE ROUTER OPTIONS ***
@@ -7,14 +8,22 @@ import Login from '@/views/Login.vue'
 export const router = {
   routes: [
     {
-      path: '/',
-      name: 'home',
-      component: Home,
-    },
-    {
       path: '/login',
       name: 'login',
-      component: Login,
+      component: LoginView,
     },
+    {
+      path: '/dashboard',
+      component: DefaultPanelLayout,
+      children: [
+        {
+          path: '/dashboard',
+          name: 'dashboard',
+          component: DashboardView,
+        },
+      ],
+    },
+    {path: '/', redirect: '/login'},
+    {path: '*', redirect: '/dashboard'},
   ],
 }

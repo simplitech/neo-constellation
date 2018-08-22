@@ -36,7 +36,7 @@ $.await.addLoader('DotLoader', DotLoader)
 
 $.await.defaultTransition = 'fade'
 $.await.defaultSpinner = 'ScaleLoader'
-$.await.defaultSpinnerColor = '#21AEB6'
+$.await.defaultSpinnerColor = '#ffffff'
 $.await.defaultSpinnerPadding = '0'
 $.await.defaultSpinnerScale = 1
 

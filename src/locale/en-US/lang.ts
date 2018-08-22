@@ -54,6 +54,7 @@ export default {
       persist: 'Persisted successfully!',
     },
     error: {
+      fieldNotDefined: 'Field Not Defined',
       unauthorized: 'Restricted Access',
       noServer: 'Could not connect to server',
       validation: 'Validation error',
@@ -138,6 +139,16 @@ export default {
         accessSecret: 'AWS Access Secret',
         keepLogged: 'Keep me logged in',
         submit: 'Login',
+      },
+    },
+  },
+
+  classes: {
+    Authentication: {
+      title: 'Authentication',
+      columns: {
+        accessKeyId: 'AWS Access Key',
+        secretAccessKey: 'AWS Access Secret',
       },
     },
   },
