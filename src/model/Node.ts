@@ -1,6 +1,7 @@
 import {$, Model, isLogged, accessKeyId} from '@/simpli'
-import {EC2, S3} from 'aws-sdk'
+import {EC2, S3, IAM} from 'aws-sdk'
 import {DescribeInstancesResult, Reservation, Tag} from 'aws-sdk/clients/ec2'
+import { NOMEM } from 'dns'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -14,6 +15,19 @@ export default class Node extends Model {
   static readonly DEFAULT_INSTANCE_TYPE = 't2.micro'
   static readonly DEFAULT_RESOURCE_TYPE = 'instance'
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
+  static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
+  static readonly DEFAULT_ASSUME_ROLE_POLICY = {
+    Version: '2012-10-17',
+    Statement: [
+      {
+        Action: 'sts:AssumeRole',
+        Principal: {
+          Service: 'ec2.amazonaws.com',
+        },
+        Effect: 'Allow',
+      },
+    ],
+  }
 
   static async list(idNetwork?: string): Promise<Node[]> {
     let payload = {
@@ -89,6 +103,8 @@ export default class Node extends Model {
 
   keyPair: string | null = null
 
+  instanceProfile: string | null = null
+
   get groupName() {
     return `network-${this.idNetwork}-sg`
   }
@@ -120,11 +136,16 @@ export default class Node extends Model {
       await this.getKeyPair(Node.DEFAULT_KEY_NAME) ||
       await this.createKeyPair(Node.DEFAULT_KEY_NAME)
 
+    // Get or Create
+    this.instanceProfile =
+      await this.getInstanceProfile(Node.DEFAULT_INSTANCE_PROFILE_NAME) ||
+      await this.createInstanceProfile(Node.DEFAULT_INSTANCE_PROFILE_NAME)
+
     if (runOnCreate) await this.run()
   }
 
   async run() {
-    const {idNetwork, idSecurityGroup, idImage, ec2, keyPair} = this
+    const {idNetwork, idSecurityGroup, idImage, ec2, keyPair, instanceProfile} = this
 
     if (!idNetwork) throw new Error($.t('system.error.fieldNotDefined'))
     if (!idSecurityGroup) throw new Error($.t('system.error.fieldNotDefined'))
@@ -163,6 +184,13 @@ export default class Node extends Model {
     const data = await ec2.runInstances(payload).promise()
 
     if (data.Instances && data.Instances[0]) this.idInstance = data.Instances[0].InstanceId || null
+
+    if (this.idInstance && this.instanceProfile) {
+      console.log('Attaching Instance Profile...')
+      const status = await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
+      console.log(`Status: ${status || 'null'}`)
+    }
+
   }
 
   async populateIdImage() {
@@ -335,4 +363,98 @@ export default class Node extends Model {
     return await s3.createBucket(payload).promise()
   }
 
+  async getInstanceProfile(name: string) {
+    const payload = {
+      InstanceProfileName: name,
+    }
+
+    const iam = new IAM()
+    const data = await iam.getInstanceProfile(payload).promise()
+
+    if (data.InstanceProfile) return data.InstanceProfile.InstanceProfileName
+    return null
+  }
+
+  async createInstanceProfile(name: string) {
+    const payload = {
+      InstanceProfileName: name,
+    }
+    let instanceProfileName = null
+
+    // Get or Create
+    const roleName =
+      await this.getRole(name) ||
+      await this.createRole(name)
+
+    const iam = new IAM()
+    const data = await iam.createInstanceProfile(payload).promise()
+
+    if (data.InstanceProfile) {
+      instanceProfileName = data.InstanceProfile.InstanceProfileName
+    }
+
+    if (roleName && instanceProfileName) {
+      await this.addRoleToInstanceProfile(roleName, instanceProfileName)
+    }
+
+    return instanceProfileName
+  }
+
+  async getRole(name: string) {
+    try {
+      const payload = {
+        RoleName: name,
+      }
+
+      const iam = new IAM()
+      const data = await iam.getRole(payload).promise()
+
+      if (data.Role) return data.Role.RoleName
+
+      return null
+
+    } catch (error) {
+      if (error.code === 'NoSuchEntity') return null
+      throw error
+    }
+  }
+
+  async createRole(name: string) {
+    const payload = {
+      AssumeRolePolicyDocument: JSON.stringify(Node.DEFAULT_ASSUME_ROLE_POLICY),
+      RoleName: name,
+    }
+
+    const iam = new IAM()
+    const data = await iam.createRole(payload).promise()
+
+    if (data.Role) return data.Role.RoleName
+    return null
+  }
+
+  async addRoleToInstanceProfile(roleName: string, instanceProfileName: string) {
+    const payload = {
+      RoleName: roleName,
+      InstanceProfileName: instanceProfileName,
+    }
+
+    const iam = new IAM()
+    return await iam.addRoleToInstanceProfile(payload).promise()
+
+  }
+
+  async attachInstanceProfile(idInstance: string, instanceProfileName: string) {
+    const {ec2} = this
+
+    const payload = {
+      IamInstanceProfile: {
+        Name: instanceProfileName,
+      },
+      InstanceId: idInstance,
+    }
+
+    const data = await ec2.associateIamInstanceProfile(payload).promise()
+    if (data.IamInstanceProfileAssociation) return data.IamInstanceProfileAssociation.State
+    return null
+  }
 }
