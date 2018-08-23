@@ -1,27 +1,27 @@
 <template>
-  <div>
-    <div class="p-10">
-      <div class="row horiz">
-        <div class="col">
-          <button @click="signOut()">Logout</button>
-          <button @click="populateList">Reload List</button>
+  <div class="app-container">
+    <div class="app-layout app-layout-large">
+
+      <div class="p-10">
+        <div class="row horiz">
+          <div class="col">
+            <button @click="signOut()">Logout</button>
+            <button @click="populateList">Reload List</button>
+          </div>
         </div>
       </div>
-    </div>
 
-    <div class="container">
-      <div class="horiz items-center">
-        <div class="weight-1 panel">
-          <div style="float: right;">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title col weight-1">Network</div>
+          <div>
             <button class="primary" @click="create">Create Node</button>
           </div>
+        </div>
 
-          <div class="panel-title">Network</div>
-
-          <div style="clear: both"></div>
-
-          <await name="nodeList" class="horiz items-center" v-for="(node, i) in list" :key="i">
-            <div class="weight-1">
+        <await name="nodeList">
+          <div class="row horiz items-center" v-for="(node, i) in list" :key="i">
+            <div class="col weight-1">
               <div class="panel">
                 <div class="panel-title">
                   <span>Node</span>
@@ -57,10 +57,10 @@
                 </div>
               </div>
             </div>
-          </await>
-
-        </div>
+          </div>
+        </await>
       </div>
+
     </div>
   </div>
 </template>

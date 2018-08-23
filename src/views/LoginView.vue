@@ -1,12 +1,18 @@
 <template>
-  <div class="login">
-    <div class="verti w-window h-window items-center">
+  <div class="app-container h-window">
 
-      <h1>{{$t('view.login.title')}}</h1>
+    <div class="app-layout h-full">
 
-      <div class="horiz items-center des-w-350 tab-w-400 w-full">
-        <div class="weight-1 panel spaced">
-          <form @submit.prevent="signIn(model)">
+      <div class="weight-1 items-center">
+        <div class="des-w-400 tab-w-300 mob-w-full">
+
+          <form @submit.prevent="signIn(model)" class="panel spaced">
+            <div class="panel-header">
+              <div class="panel-title">
+                {{$t('view.login.title')}}
+              </div>
+            </div>
+
             <await name="login">
               <input-group
                       type="password"
@@ -19,11 +25,13 @@
               >{{$t('view.login.form.accessSecret')}}
               </input-group>
 
-              <div class="text-center">
-                <input type="submit" :value="$t('view.login.form.submit')"/>
-              </div>
             </await>
+
+            <div class="panel-footer items-end">
+              <input type="submit" :value="$t('view.login.form.submit')"/>
+            </div>
           </form>
+
         </div>
       </div>
 

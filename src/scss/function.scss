@@ -11,6 +11,12 @@
   }
   &.box-shadow {
     box-shadow: 0 0 2px $hex;
+    &.highlight {
+      box-shadow: 0 0 0 2px $hex;
+    }
+    &.deep-15 {
+      box-shadow: 0 0 15px $hex;
+    }
   }
   &.text-shadow {
     text-shadow: 0 2px 4px $hex;

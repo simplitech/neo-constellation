@@ -3,11 +3,41 @@
 .panel {
   @extend .pal-black-0-50.bg;
   @extend .pal-white-69.text;
+  @extend .pal-black-0-50.box-shadow.deep-15;
+  @extend .pal-white-30.border;
+
   border-radius: 6px;
   padding: 16px;
-  margin: 8px;
-  border: 1px solid rgba(255,255,255,0.3);
-  box-shadow: 0 0 15px rgba(0,0,0,0.5);
+  border-width: 1px;
+  border-style: solid;
+
+  > .panel-header, > .panel-footer {
+    @extend .pal-black-0-50.bg;
+    @extend .pal-white-15.border;
+
+    display: flex;
+    align-items: center;
+    margin: -16px;
+    padding: 10px;
+
+    .panel-title {
+      margin: 0;
+    }
+  }
+
+  > .panel-header {
+    border-radius: 6px 6px 0 0;
+    margin-bottom: 1rem;
+    border-bottom-style: solid;
+    border-bottom-width: 1px;
+  }
+
+  > .panel-footer {
+    border-radius: 0 0 6px 6px;
+    margin-top: 1rem;
+    border-top-style: solid;
+    border-top-width: 1px;
+  }
 
   .panel-title {
     font-weight: bold;
@@ -21,5 +51,48 @@
   }
   &.spaced {
     padding: 24px;
+
+    > .panel-header {
+      margin: -24px;
+      margin-bottom: 1rem;
+    }
+    > .panel-footer {
+      margin: -24px;
+      margin-top: 1rem;
+    }
+  }
+}
+
+.app-container {
+  @extend .verti, .items-center;
+  padding: 16px;
+
+  &.compact {
+    padding: 8px;
+  }
+  @media screen and (max-width: 544px) {
+    padding: 4px;
+  }
+}
+
+.app-layout {
+  @extend .verti, .w-full;
+
+  &.app-layout-small {
+    @extend .des-w-300;
+  }
+  &.app-layout-medium {
+    @extend .des-w-500;
+  }
+  &.app-layout-large {
+    @media screen and (min-width: 991px) {
+      width: 700px;
+    }
+  }
+
+  &.app-layout-huge {
+    @media screen and (min-width: 991px) {
+      width: 900px;
+    }
   }
 }

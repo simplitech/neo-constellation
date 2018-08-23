@@ -1,7 +1,8 @@
 import {$, Model, isLogged, accessKeyId} from '@/simpli'
-import {EC2, S3, IAM} from 'aws-sdk'
+import {EC2, S3} from 'aws-sdk'
 import {DescribeInstancesResult, Reservation, Tag} from 'aws-sdk/clients/ec2'
-import { NOMEM } from 'dns'
+import IAM from 'aws-sdk/clients/iam'
+// import { NOMEM } from 'dns'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -145,7 +146,7 @@ export default class Node extends Model {
   }
 
   async run() {
-    const {idNetwork, idSecurityGroup, idImage, ec2, keyPair, instanceProfile} = this
+    const {idNetwork, idSecurityGroup, idImage, ec2, keyPair} = this
 
     if (!idNetwork) throw new Error($.t('system.error.fieldNotDefined'))
     if (!idSecurityGroup) throw new Error($.t('system.error.fieldNotDefined'))
