@@ -3,10 +3,11 @@ import * as types from '@/store/mutation-types'
 import {AuthState, RootState} from '@/types/store'
 import {$, push, successAndPush, errorAndPush, infoAndPush, sleep} from '@/simpli'
 import Authentication from '@/model/Authentication'
-import AWS from 'aws-sdk'
+import AWS, { IAM } from 'aws-sdk'
 
 // initial state
 const state: AuthState = {
+  username: undefined,
   accessKeyId: undefined,
   secretAccessKey: undefined,
   unauthenticatedPath: undefined,
@@ -20,6 +21,7 @@ const state: AuthState = {
 // getters
 const getters: GetterTree<AuthState, RootState> = {
   isLogged: ({accessKeyId, secretAccessKey}) => !!accessKeyId && !!secretAccessKey,
+  username: ({username}) => username,
   accessKeyId: ({accessKeyId}) => accessKeyId,
   secretAccessKey: ({secretAccessKey}) => secretAccessKey,
   unauthenticatedPath: ({unauthenticatedPath}) => unauthenticatedPath,
@@ -35,15 +37,32 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param model format => model: { account, password } (non-encrypted)
    */
   signIn: async ({state, commit, getters}, model: Authentication) => {
-    const fetch = () => model.validate()
-    // Show spinner while waiting validation (3000ms delay)
-    await $.await.run(fetch, 'login', 3000)
 
     const {accessKeyId, secretAccessKey} = model
     AWS.config.update({accessKeyId, secretAccessKey})
 
+    let username: string
+
+    const fetch = async () => {
+
+      const iam = new IAM()
+
+      try {
+        const data = await iam.getUser().promise()
+        username = data.User.UserName
+      } catch (e) {
+        errorAndPush('system.error.invalidPassword', '/login')
+        throw e
+      }
+
+      await model.validate()
+    }
+    // Show spinner while waiting validation (3000ms delay)
+    await $.await.run(fetch, 'login', 3000)
+
     localStorage.setItem('accessKeyId', accessKeyId)
     localStorage.setItem('secretAccessKey', secretAccessKey)
+    localStorage.setItem('username', username!)
 
     commit(types.POPULATE)
 
@@ -134,17 +153,21 @@ const actions: ActionTree<AuthState, RootState> = {
 const mutations: MutationTree<AuthState> = {
   // Populate mutation
   [types.POPULATE](state) {
+    const username = localStorage.getItem('username')
     const accessKeyId = localStorage.getItem('accessKeyId')
     const secretAccessKey = localStorage.getItem('secretAccessKey')
 
+    if (username) state.username = username
     if (accessKeyId) state.accessKeyId = accessKeyId
     if (secretAccessKey) state.secretAccessKey = secretAccessKey
   },
   // Forget mutation
   [types.FORGET](state) {
+    state.username = undefined
     state.accessKeyId = undefined
     state.secretAccessKey = undefined
 
+    localStorage.removeItem('username')
     localStorage.removeItem('accessKeyId')
     localStorage.removeItem('secretAccessKey')
   },
