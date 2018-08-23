@@ -1,5 +1,5 @@
 import {$, Model, isLogged, accessKeyId} from '@/simpli'
-import {EC2, S3} from 'aws-sdk'
+import {EC2, S3, SSM} from 'aws-sdk'
 import {DescribeInstancesResult, Reservation, Tag} from 'aws-sdk/clients/ec2'
 import IAM from 'aws-sdk/clients/iam'
 // import { NOMEM } from 'dns'
@@ -17,6 +17,7 @@ export default class Node extends Model {
   static readonly DEFAULT_RESOURCE_TYPE = 'instance'
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
   static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
+  static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
   static readonly DEFAULT_ASSUME_ROLE_POLICY = {
     Version: '2012-10-17',
     Statement: [
@@ -99,6 +100,7 @@ export default class Node extends Model {
   idInstance: string | null = null
 
   ec2: EC2 = new EC2()
+  ssm: SSM = new SSM()
 
   region: string = Node.DEFAULT_REGION
 
@@ -189,7 +191,7 @@ export default class Node extends Model {
     if (this.idInstance && this.instanceProfile) {
       console.log('Attaching Instance Profile...')
       const status = await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
-      console.log(`Status: ${status || 'null'}`)
+      console.log(`Instance created!`)
     }
 
   }
@@ -201,7 +203,7 @@ export default class Node extends Model {
       Filters: [
         {
           Name: 'name',
-          Values: ['ubuntu-xenial-16.04-amd64-server-dotnetcore-2018.03.27'],
+          Values: ['ubuntu-bionic-18.04-amd64-server-20180522-dotnetcore-2018.07.11'],
         },
       ],
     }
@@ -369,11 +371,16 @@ export default class Node extends Model {
       InstanceProfileName: name,
     }
 
+    try {
     const iam = new IAM()
     const data = await iam.getInstanceProfile(payload).promise()
 
     if (data.InstanceProfile) return data.InstanceProfile.InstanceProfileName
-    return null
+
+    } catch (e) {
+      if (e.code === 'NoSuchEntity') return
+      throw e
+    }
   }
 
   async createInstanceProfile(name: string) {
@@ -454,8 +461,49 @@ export default class Node extends Model {
       InstanceId: idInstance,
     }
 
+    const waitPayload = {
+      Filters: [
+        {
+          Name: 'instance-id',
+          Values: [idInstance],
+        },
+      ],
+    }
+
+    // Newly created instances start on a 'pending' status.
+    // Must wait for 'running'
+    console.log('Waiting for instance to be running...')
+    await ec2.waitFor('instanceRunning', waitPayload).promise()
+    console.log('Instance is running! Attaching Instance Profile...')
+
     const data = await ec2.associateIamInstanceProfile(payload).promise()
+    console.log(data.IamInstanceProfileAssociation)
     if (data.IamInstanceProfileAssociation) return data.IamInstanceProfileAssociation.State
     return null
+  }
+
+  async sendShellScript(idInstance: string) {
+    const payload = {
+      DocumentName: 'AWS-RunShellScript',
+      InstanceIds: [idInstance],
+      Parameters: {
+        commands : ['yum install -y mysql'],
+      },
+    }
+
+    const data = await this.ssm.sendCommand(payload).promise()
+
+    if (data.Command && data.Command.Status === 'Success') {
+      const commandId = data.Command.CommandId
+      const listPayload = {
+        CommandId: commandId,
+        Details: true,
+      }
+
+      const resp = await this.ssm.listCommandInvocations(listPayload).promise()
+
+      console.log(resp)
+
+    }
   }
 }

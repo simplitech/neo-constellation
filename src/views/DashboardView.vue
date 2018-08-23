@@ -7,6 +7,7 @@
           <div class="col">
             <button @click="signOut()">Logout</button>
             <button @click="populateList">Reload List</button>
+            <button @click="sendCommand">Send Command</button>
           </div>
         </div>
       </div>
@@ -95,6 +96,10 @@
         $.await.error('nodeList')
         throw e
       }
+    }
+
+    async sendCommand() {
+      await new Node().sendShellScript('a')
     }
   }
 </script>
