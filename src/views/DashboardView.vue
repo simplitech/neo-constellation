@@ -9,57 +9,62 @@
         <div class="col">
           <button @click="sendCommand">Send Command</button>
         </div>
+        <div class="col">
+          <router-link class="btn primary" to="/node/new">Create Node</router-link>
+        </div>
       </div>
 
-      <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title col weight-1">Network</div>
-          <div>
-            <router-link class="btn primary" to="/node/new">Create Node</router-link>
-          </div>
-        </div>
+      <await name="networks">
 
-        <await name="nodeList">
-          <div class="row horiz items-center" v-for="(item, i) in list" :key="i">
-            <div class="col weight-1">
-              <div class="panel">
-                <div class="panel-title">
-                  <span>Node</span>
-                  {{i}}
-                </div>
+        <div class="panel m-10" v-for="(network, i) in networks" :key="i">
+              <div class="panel-header">
+                <div class="panel-title col weight-1">Network</div>
+                <span>
+              #{{network.$id}}
+            </span>
+              </div>
 
-                <div>
-                  <strong>ID Network: </strong>
-                  <span>
-                    {{item.idNetwork}}
+              <div class="row horiz items-center" v-for="(node, j) in network.nodes" :key="j">
+                <div class="col weight-1">
+                  <div class="panel">
+                    <div class="panel-title">
+                      <span>Node</span>
+                      {{i}}
+                    </div>
+
+                    <div>
+                      <strong>ID Network: </strong>
+                      <span>
+                    {{node.idNetwork}}
                   </span>
-                </div>
+                    </div>
 
-                <div>
-                  <strong>ID Image: </strong>
-                  <span>
-                    {{item.idImage}}
+                    <div>
+                      <strong>ID Image: </strong>
+                      <span>
+                    {{node.idImage}}
                   </span>
-                </div>
+                    </div>
 
-                <div>
-                  <strong>ID Security Group: </strong>
-                  <span>
-                    {{item.idSecurityGroup}}
+                    <div>
+                      <strong>ID Security Group: </strong>
+                      <span>
+                    {{node.idSecurityGroup}}
                   </span>
-                </div>
+                    </div>
 
-                <div>
-                  <strong>ID Instance: </strong>
-                  <span>
-                    {{item.idInstance}}
+                    <div>
+                      <strong>ID Instance: </strong>
+                      <span>
+                    {{node.idInstance}}
                   </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </await>
-      </div>
+
+      </await>
 
     </div>
   </div>
@@ -68,6 +73,7 @@
 <script lang="ts">
   import {Component, Vue} from 'vue-property-decorator'
   import {Getter, Action} from 'vuex-class'
+  import Network from '@/model/Network'
   import Node from '@/model/Node'
   import {$} from '@/simpli'
 
@@ -75,7 +81,7 @@
   export default class DashboardView extends Vue {
     @Getter('auth/username') username?: string
 
-    list: Node[] = []
+    networks: Network[] = []
 
     async mounted() {
       await this.populateList()
@@ -83,10 +89,10 @@
 
     async populateList() {
       const fetch = async () => {
-        this.list = await Node.list()
+        this.networks = await Network.list()
       }
 
-      await $.await.run(fetch, 'nodeList', 2000)
+      await $.await.run(fetch, 'networks')
     }
 
     async sendCommand() {

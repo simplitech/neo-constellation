@@ -9,4 +9,6 @@ export const abort = (msg: string) => {
   throw new Error($.t(msg))
 }
 
+export const back = () => window.history.back()
+
 export const random = () => Math.random()

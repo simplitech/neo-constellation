@@ -8,8 +8,9 @@ import {
   ValidationMaxLength,
 } from '@/simpli'
 
+import _ from 'lodash'
 import {EC2, S3, SSM, IAM} from 'aws-sdk'
-import {DescribeInstancesResult, Reservation, Tag} from 'aws-sdk/clients/ec2'
+import {Instance, Reservation, Tag} from 'aws-sdk/clients/ec2'
 import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
@@ -41,7 +42,15 @@ export default class Node extends Model {
     ],
   }
 
-  static async list(idNetwork?: string): Promise<Node[]> {
+  /**
+   * List all nodes based on filter
+   * @param {string} idNetwork
+   * @param {Region} region
+   * @returns {Promise<Node[]>}
+   */
+  static async list(idNetwork?: string, region?: Region) {
+    const {regions, switchRegion} = AwsGlobal
+
     let payload = {
       Filters: [
         {
@@ -62,39 +71,44 @@ export default class Node extends Model {
       }
     }
 
-    const request = await AwsGlobal.ec2.describeInstances(payload).promise()
-    const data = request.$response.data as DescribeInstancesResult
+    // List of promises
+    const promises = []
 
-    // Serialize response into Node list
-    if (data.Reservations) {
-      const nodes: Node[] = []
-
-      data.Reservations.forEach((item: Reservation) => {
-        const instance = item.Instances && item.Instances[0]
-
-        if (instance) {
-          const tag = (instance.Tags || [] as Tag[]).find((tag: Tag) => tag.Key === Node.DEFAULT_NETWORK_TAG)
-
-          const node = new Node()
-
-          if (tag) node.idNetwork = tag.Value as string
-          node.idInstance = instance.InstanceId || null
-          node.idImage = instance.ImageId || null
-          node.keyPair = instance.KeyName || null
-
-          // TODO: replace to Regex match (/network-\n*-sg/g)
-          if (instance.SecurityGroups && instance.SecurityGroups[0]) {
-            node.idSecurityGroup = instance.SecurityGroups[0].GroupName || null
-          }
-
-          nodes.push(node)
-        }
-      })
-
-      return nodes
+    const listRegion = region ? [region] : await regions()
+    // Scan all AWS regions
+    for (const region of listRegion) {
+      switchRegion(region)
+      promises.push(new EC2().describeInstances(payload).promise())
     }
 
-    return []
+    // List of nodes of each region
+    const list: Node[][] = []
+
+    // Scan all responses
+    const responses = await Promise.all(promises)
+    for (const resp of responses) {
+      if (resp.Reservations) {
+        const nodes: Node[] = []
+
+        // Scan all instances of a region
+        for (const reservation of resp.Reservations) {
+          const instance = reservation.Instances && reservation.Instances[0]
+
+          if (instance) {
+            const node = new Node()
+            node.serialise(instance)
+            nodes.push(node)
+          }
+        }
+
+        list.push(nodes)
+      }
+    }
+
+    return _.chain(list)
+      .flatten()
+      .uniqBy('idInstance')
+      .value() as Node[]
   }
 
   @ValidationRequired()
@@ -110,6 +124,9 @@ export default class Node extends Model {
   @ValidationRequired()
   availabilityZone: Zone | null = null
 
+  // Instance ID
+  idInstance: string | null = null
+
   // Network ID
   idNetwork: string | null = null
 
@@ -118,11 +135,6 @@ export default class Node extends Model {
 
   // Security Group ID
   idSecurityGroup: string | null = null
-
-  // Instance ID
-  idInstance: string | null = null
-
-  ssm: SSM = new SSM()
 
   keyPair: string | null = null
 
@@ -142,10 +154,22 @@ export default class Node extends Model {
     if (region) this.region = region
   }
 
-  async create() {
-    const {idNetwork, groupName} = this
+  serialise(instance: Instance) {
+    const tag = (instance.Tags || [] as Tag[]).find((tag: Tag) => tag.Key === Node.DEFAULT_NETWORK_TAG)
 
-    if (!idNetwork) abort('system.error.fieldNotDefined')
+    if (tag) this.idNetwork = tag.Value as string
+    this.idInstance = instance.InstanceId || null
+    this.idImage = instance.ImageId || null
+    this.keyPair = instance.KeyName || null
+
+    // TODO: replace to Regex match (/network-\n*-sg/g)
+    if (instance.SecurityGroups && instance.SecurityGroups[0]) {
+      this.idSecurityGroup = instance.SecurityGroups[0].GroupName || null
+    }
+  }
+
+  async create() {
+    const {groupName} = this
 
     await this.populateIdImage()
 
@@ -456,7 +480,7 @@ export default class Node extends Model {
       },
     }
 
-    const data = await this.ssm.sendCommand(payload).promise()
+    const data = await AwsGlobal.ssm.sendCommand(payload).promise()
 
     if (data.Command && data.Command.Status === 'Success') {
       const commandId = data.Command.CommandId
@@ -465,7 +489,7 @@ export default class Node extends Model {
         Details: true,
       }
 
-      const resp = await this.ssm.listCommandInvocations(listPayload).promise()
+      const resp = await AwsGlobal.ssm.listCommandInvocations(listPayload).promise()
 
       console.log(resp)
 

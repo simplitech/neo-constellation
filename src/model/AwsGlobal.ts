@@ -1,7 +1,10 @@
-import {EC2, S3, SSM} from 'aws-sdk'
+import AWS, {EC2, S3, SSM} from 'aws-sdk'
 import IAM from 'aws-sdk/clients/iam'
+import Network from '@/model/Network'
+import Node from '@/model/Node'
 import {Region} from '@/enum/Region'
 import {AvailabilityZone, Region as RegionAws} from 'aws-sdk/clients/ec2'
+import _ from 'lodash'
 
 export default abstract class AwsGlobal {
 
@@ -13,18 +16,37 @@ export default abstract class AwsGlobal {
   static ssm: SSM = new SSM()
 
   /**
-   * Returns regions from AWS
+   * Switch AWS Region
+   * @param {Region} region
+   */
+  static switchRegion(region: Region) {
+    AWS.config.update({region})
+  }
+
+  /**
+   * Returns networks
    * @returns {Promise<string[]>}
    */
-  static async regions() {
-    let list: string[] = []
+  static async networks(): Promise<string[]> {
+    const list = await Network.list()
+    return list
+      .filter((item: Network) => !!item.$id)
+      .map((item: Network) => item.$id!)
+  }
+
+  /**
+   * Returns regions from AWS
+   * @returns {Promise<Region[]>}
+   */
+  static async regions(): Promise<Region[]> {
+    let list: Region[] = []
 
     const resp = await AwsGlobal.ec2.describeRegions().promise()
 
     if (resp.Regions) {
       list = resp.Regions
         .filter((item: RegionAws) => !!item.RegionName)
-        .map((item: RegionAws) => item.RegionName!)
+        .map((item: RegionAws) => item.RegionName!) as Region[]
     }
 
     return list
@@ -34,20 +56,17 @@ export default abstract class AwsGlobal {
    * Returns availability zones from AWS
    * @returns {Promise<string[]>}
    */
-  static async availabilityZones(region?: Region) {
+  static async availabilityZones(region?: Region): Promise<string[]> {
+    let ec2 = AwsGlobal.ec2
 
-    const payload = {
-      Filters: [
-        {
-          Name: 'region-name',
-          Values: [region || '*'],
-        },
-      ],
+    if (region) {
+      AwsGlobal.switchRegion(region)
+      ec2 = new EC2()
     }
 
     let list: string[] = []
 
-    const resp = await AwsGlobal.ec2.describeAvailabilityZones(payload).promise()
+    const resp = await ec2.describeAvailabilityZones().promise()
 
     if (resp.AvailabilityZones) {
       list = resp.AvailabilityZones

@@ -20,7 +20,9 @@
         <div class="slot-3">
           <ul>
             <li v-if="isLogged">
-              <button @click="signOut()">Logout</button>
+              <button @click="signOut()">
+                {{$t('app.logout')}}
+              </button>
             </li>
           </ul>
         </div>

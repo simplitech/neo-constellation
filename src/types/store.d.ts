@@ -1,5 +1,4 @@
 import {ID, Currency, Lang} from '@/simpli'
-import User from '@/model/User'
 
 /**
  * Root
