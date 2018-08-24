@@ -1,5 +1,9 @@
 @import "palette";
 
+.text-white {
+  @extend .pal-white-69.text;
+}
+
 .panel {
   @extend .pal-black-0-50.bg;
   @extend .pal-white-69.text;
@@ -19,6 +23,7 @@
     align-items: center;
     margin: -16px;
     padding: 10px;
+    user-select: none;
 
     .panel-title {
       margin: 0;

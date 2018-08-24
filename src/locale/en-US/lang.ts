@@ -54,8 +54,11 @@ export default {
       persist: 'Persisted successfully!',
     },
     error: {
+      unexpectedError: 'Unexpected Error',
       fieldNotDefined: 'Field Not Defined',
       unauthorized: 'Restricted Access',
+      invalidCredentials: 'Invalid Credentials',
+      invalidClientTokenId: 'Invalid Client Token ID',
       noServer: 'Could not connect to server',
       validation: 'Validation error',
       required: 'The field \'{0}\' is required',
@@ -83,7 +86,8 @@ export default {
   },
 
   app: {
-    title: 'GeneratorUseCase',
+    title: 'Neo Constellation',
+    anonymous: 'Anonymous',
     logout: 'Logout',
     menu: 'Menu',
     add: 'Add',
@@ -135,7 +139,7 @@ export default {
 
   view: {
     login: {
-      title: 'Neo Coordinator',
+      title: 'Neo Constellation',
       form: {
         accessKey: 'AWS Access Key',
         accessSecret: 'AWS Access Secret',

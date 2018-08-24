@@ -1,9 +1,10 @@
 import {ActionTree, GetterTree, Module, MutationTree} from 'vuex'
 import * as types from '@/store/mutation-types'
 import {AuthState, RootState} from '@/types/store'
-import {$, push, successAndPush, errorAndPush, infoAndPush, sleep} from '@/simpli'
+import {$, push, successAndPush, errorAndPush, infoAndPush} from '@/simpli'
 import Authentication from '@/model/Authentication'
-import AWS, {EC2, IAM} from 'aws-sdk'
+import AWS, {EC2} from 'aws-sdk'
+import IAM from 'aws-sdk/clients/iam'
 import AwsGlobal from '@/model/AwsGlobal'
 
 // initial state
@@ -43,35 +44,39 @@ const actions: ActionTree<AuthState, RootState> = {
     AWS.config.update({accessKeyId, secretAccessKey})
 
     AwsGlobal.ec2 = new EC2()
+    AwsGlobal.iam = new IAM()
 
-    let username: string
+    let username: string = $.t('app.anonymous')
 
     const fetch = async () => {
-
-      const iam = new IAM()
+      await model.validate()
 
       try {
-        const data = await iam.getUser().promise()
-        username = data.User.UserName
+        const resp = await AwsGlobal.iam.getUser().promise()
+        username = resp.User.UserName
       } catch (e) {
-        errorAndPush('system.error.invalidPassword', '/login')
+        if (e.code === 'InvalidClientTokenId') {
+          errorAndPush('system.error.invalidClientTokenId', '/login', 'httpResponse.403')
+        } else if (e.code === 'CredentialsError') {
+          errorAndPush('system.error.invalidCredentials', '/login', 'httpResponse.401')
+        } else errorAndPush('system.error.unexpectedError', '/login')
         throw e
       }
-
-      await model.validate()
     }
+
     // Show spinner while waiting validation (3000ms delay)
     await $.await.run(fetch, 'login', 3000)
 
-    localStorage.setItem('username', username!)
+    localStorage.setItem('username', username)
     localStorage.setItem('accessKeyId', accessKeyId)
     localStorage.setItem('secretAccessKey', secretAccessKey)
 
     commit(types.POPULATE)
 
-    if (getters!.unauthenticatedPath && $.route.name !== 'login') {
-      infoAndPush('system.info.welcome', getters!.unauthenticatedPath)
-    } else infoAndPush('system.info.welcome', '/dashboard')
+    $.snotify.info(username, $.t('system.info.welcome'))
+
+    if (getters.unauthenticatedPath && $.route.name !== 'login') push(getters.unauthenticatedPath)
+    else push('/dashboard')
 
     commit(types.SET_UNAUTHENTICATED_PATH, undefined)
 

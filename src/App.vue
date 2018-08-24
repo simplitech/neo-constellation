@@ -17,14 +17,14 @@
 <script lang="ts">
   import { Component, Vue, Watch } from 'vue-property-decorator'
   import {Action, Getter} from 'vuex-class'
-  import {ToastDefaultConfig, ToastDefaultStyle, ToastGlobalConfig, ToastStyle} from '@/simpli'
+  import {ToastDefaultConfig, ToastGlobalConfig, ToastStyle} from '@/simpli'
 
   @Component
   export default class App extends Vue {
     @Action('auth/onSignIn') onSignIn?: Function
     @Action('auth/onAuth') onAuth?: Function
     @Action('auth/onSignOut') onSignOut?: Function
-    toastStyle: ToastStyle = ToastDefaultStyle
+    toastStyle: ToastStyle = ToastStyle.DARK
 
     // When the user or system signs in
     signInEvent() {

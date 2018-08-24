@@ -1,12 +1,16 @@
-import {EC2} from 'aws-sdk'
+import {EC2, S3, SSM} from 'aws-sdk'
+import IAM from 'aws-sdk/clients/iam'
 import {Region} from '@/enum/Region'
 import {AvailabilityZone, Region as RegionAws} from 'aws-sdk/clients/ec2'
 
-export default class AwsGlobal {
+export default abstract class AwsGlobal {
 
   static readonly DEFAULT_REGION = Region.SA_EAST_1
 
   static ec2: EC2 = new EC2()
+  static iam: IAM = new IAM()
+  static s3: S3 = new S3()
+  static ssm: SSM = new SSM()
 
   /**
    * Returns regions from AWS

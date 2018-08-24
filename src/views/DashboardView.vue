@@ -4,9 +4,6 @@
 
       <div class="row horiz">
         <div class="col">
-          <button @click="signOut()">Logout</button>
-        </div>
-        <div class="col">
           <button @click="populateList">Reload List</button>
         </div>
         <div class="col">
@@ -70,13 +67,13 @@
 
 <script lang="ts">
   import {Component, Vue} from 'vue-property-decorator'
-  import {Action} from 'vuex-class'
+  import {Getter, Action} from 'vuex-class'
   import Node from '@/model/Node'
   import {$} from '@/simpli'
 
   @Component
   export default class DashboardView extends Vue {
-    @Action('auth/signOut') signOut?: Function
+    @Getter('auth/username') username?: string
 
     list: Node[] = []
 

@@ -1,9 +1,15 @@
 <template>
-  <div class="app-container h-window">
+  <div class="h-window">
 
     <div class="app-layout h-full">
 
-      <div class="weight-1 items-center">
+      <div class="verti weight-1 items-center p-10">
+        <div class="m-10">
+          <a href="https://neo.org/" target="_blank">
+            <img src="../assets/img/neo@3x.png" alt="NEO Constallation" height="80">
+          </a>
+        </div>
+
         <div class="des-w-400 tab-w-300 mob-w-full">
 
           <form @submit.prevent="signIn(model)" class="panel spaced">
@@ -28,7 +34,9 @@
             </await>
 
             <div class="panel-footer items-end">
-              <input type="submit" :value="$t('view.login.form.submit')"/>
+              <await name="login" spinner="BeatLoader">
+                <input type="submit" :value="$t('view.login.form.submit')"/>
+              </await>
             </div>
           </form>
 

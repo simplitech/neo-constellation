@@ -83,7 +83,7 @@ nav {
       }
 
       img {
-        width: 150px;
+        height: 50px;
       }
     }
 
@@ -91,7 +91,7 @@ nav {
       flex: 1;
     }
   }
-  .menu {
+  .slot-1 {
     flex: 1;
     margin: auto 12px;
 
@@ -99,7 +99,7 @@ nav {
       display: none;
     }
   }
-  .link {
+  .slot-2 {
     flex: 0 auto;
     margin: auto 12px;
     img {
@@ -114,7 +114,7 @@ nav {
       display: none;
     }
   }
-  .lang {
+  .slot-3 {
     flex: 0 auto;
     margin: auto 12px;
     img {
