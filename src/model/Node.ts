@@ -1,8 +1,19 @@
-import {$, Model, isLogged, accessKeyId} from '@/simpli'
-import {EC2, S3} from 'aws-sdk'
+import {
+  $,
+  abort,
+  Model,
+  isLogged,
+  accessKeyId,
+  ValidationRequired,
+  ValidationMaxLength,
+} from '@/simpli'
+
+import {EC2, S3, IAM} from 'aws-sdk'
 import {DescribeInstancesResult, Reservation, Tag} from 'aws-sdk/clients/ec2'
-import IAM from 'aws-sdk/clients/iam'
-// import { NOMEM } from 'dns'
+import {Size} from '@/enum/Size'
+import {Region} from '@/enum/Region'
+import {Zone} from '@/enum/Zone'
+import AwsGlobal from '@/model/AwsGlobal'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -10,7 +21,6 @@ const shortid = require('shortid')
 /* *** AWS EC2 Instance *** */
 export default class Node extends Model {
 
-  static readonly DEFAULT_REGION = 'sa-east-1'
   static readonly DEFAULT_KEY_NAME = 'NeoNode'
   static readonly DEFAULT_DEVICE_NAME = '/dev/sda1'
   static readonly DEFAULT_INSTANCE_TYPE = 't2.micro'
@@ -51,7 +61,7 @@ export default class Node extends Model {
       }
     }
 
-    const request = await new EC2().describeInstances(payload).promise()
+    const request = await AwsGlobal.ec2.describeInstances(payload).promise()
     const data = request.$response.data as DescribeInstancesResult
 
     // Serialize response into Node list
@@ -86,8 +96,21 @@ export default class Node extends Model {
     return []
   }
 
-  // Unique ID
-  idNetwork: string = shortid.generate()
+  @ValidationRequired()
+  @ValidationMaxLength(60)
+  name: string | null = null
+
+  @ValidationRequired()
+  size: Size | null = null
+
+  @ValidationRequired()
+  region: Region | null = null
+
+  @ValidationRequired()
+  availabilityZone: Zone | null = null
+
+  // Network ID
+  idNetwork: string | null = null
 
   // Image ID
   idImage: string | null = null
@@ -98,10 +121,6 @@ export default class Node extends Model {
   // Instance ID
   idInstance: string | null = null
 
-  ec2: EC2 = new EC2()
-
-  region: string = Node.DEFAULT_REGION
-
   keyPair: string | null = null
 
   instanceProfile: string | null = null
@@ -110,20 +129,20 @@ export default class Node extends Model {
     return `network-${this.idNetwork}-sg`
   }
 
-  constructor(network?: string, region?: string) {
+  constructor(network = shortid.generate(), region = AwsGlobal.DEFAULT_REGION) {
     super()
 
     // Auth required
-    if (!isLogged()) throw new Error($.t('system.error.unauthorized'))
+    if (!isLogged()) abort('system.error.unauthorized')
 
     if (network) this.idNetwork = network
     if (region) this.region = region
   }
 
-  async create(runOnCreate = false) {
+  async create() {
     const {idNetwork, groupName} = this
 
-    if (!idNetwork) throw new Error($.t('system.error.fieldNotDefined'))
+    if (!idNetwork) abort('system.error.fieldNotDefined')
 
     await this.populateIdImage()
 
@@ -142,60 +161,10 @@ export default class Node extends Model {
       await this.getInstanceProfile(Node.DEFAULT_INSTANCE_PROFILE_NAME) ||
       await this.createInstanceProfile(Node.DEFAULT_INSTANCE_PROFILE_NAME)
 
-    if (runOnCreate) await this.run()
-  }
-
-  async run() {
-    const {idNetwork, idSecurityGroup, idImage, ec2, keyPair} = this
-
-    if (!idNetwork) throw new Error($.t('system.error.fieldNotDefined'))
-    if (!idSecurityGroup) throw new Error($.t('system.error.fieldNotDefined'))
-    if (!idImage) throw new Error($.t('system.error.fieldNotDefined'))
-    if (!keyPair) throw new Error($.t('system.error.fieldNotDefined'))
-
-    const payload = {
-      BlockDeviceMappings: [
-        {
-          DeviceName: Node.DEFAULT_DEVICE_NAME,
-          Ebs: {
-            DeleteOnTermination: true,
-          },
-        },
-      ],
-      ImageId: idImage,
-      InstanceType: Node.DEFAULT_INSTANCE_TYPE,
-      KeyName: keyPair,
-      SecurityGroupIds: [idSecurityGroup],
-      MinCount: 1,
-      MaxCount: 1,
-      TagSpecifications: [
-        {
-          ResourceType: Node.DEFAULT_RESOURCE_TYPE,
-          Tags: [
-            {
-              Key: Node.DEFAULT_NETWORK_TAG,
-              Value: idNetwork,
-            },
-          ],
-        },
-      ],
-    }
-
-    console.log('Running Instances...')
-    const data = await ec2.runInstances(payload).promise()
-
-    if (data.Instances && data.Instances[0]) this.idInstance = data.Instances[0].InstanceId || null
-
-    if (this.idInstance && this.instanceProfile) {
-      console.log('Attaching Instance Profile...')
-      const status = await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
-      console.log(`Status: ${status || 'null'}`)
-    }
-
+    await this.install()
   }
 
   async populateIdImage() {
-    const {ec2} = this
 
     const payload = {
       Filters: [
@@ -207,13 +176,12 @@ export default class Node extends Model {
     }
 
     console.log('Listing OS Images...')
-    const data = await ec2.describeImages(payload).promise()
+    const data = await AwsGlobal.ec2.describeImages(payload).promise()
 
     if (data.Images && data.Images[0]) this.idImage = data.Images[0].ImageId || null
   }
 
   async getSecurityGroupByName(name: string) {
-    const {ec2} = this
 
     const payload = {
       Filters: [
@@ -225,7 +193,7 @@ export default class Node extends Model {
     }
 
     console.log('Listing Security Groups...')
-    const data = await ec2.describeSecurityGroups(payload).promise()
+    const data = await AwsGlobal.ec2.describeSecurityGroups(payload).promise()
 
     if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId
 
@@ -233,7 +201,6 @@ export default class Node extends Model {
   }
 
   async getKeyPair(name: string) {
-    const {ec2} = this
 
     const payload = {
       Filters: [
@@ -245,7 +212,7 @@ export default class Node extends Model {
     }
 
     console.log('Listing Key Pairs...')
-    const data = await ec2.describeKeyPairs(payload).promise()
+    const data = await AwsGlobal.ec2.describeKeyPairs(payload).promise()
 
     if (data.KeyPairs && data.KeyPairs[0]) return data.KeyPairs[0].KeyName
 
@@ -253,7 +220,6 @@ export default class Node extends Model {
   }
 
   async getDefaultVpc() {
-    const {ec2} = this
 
     const payload = {
       Filters: [
@@ -265,13 +231,12 @@ export default class Node extends Model {
     }
 
     console.log('Listing VPCs...')
-    const data = await ec2.describeVpcs(payload).promise()
+    const data = await AwsGlobal.ec2.describeVpcs(payload).promise()
 
     if (data.Vpcs && data.Vpcs[0]) return data.Vpcs[0].VpcId
   }
 
   async createSecurityGroup(name: string) {
-    const {ec2} = this
 
     const vpcId = await this.getDefaultVpc()
 
@@ -282,13 +247,13 @@ export default class Node extends Model {
     }
 
     console.log('Creating a Security Group...')
-    const data = await ec2.createSecurityGroup(payload).promise()
+    const data = await AwsGlobal.ec2.createSecurityGroup(payload).promise()
 
     return data.GroupId || null
   }
 
   async createKeyPair(name: string) {
-    const {ec2} = this
+    const {ec2} = AwsGlobal
 
     const privateKey = await this.getObject(`${name}.pem`, `neo-bucket-${accessKeyId()}`)
 
@@ -445,7 +410,6 @@ export default class Node extends Model {
   }
 
   async attachInstanceProfile(idInstance: string, instanceProfileName: string) {
-    const {ec2} = this
 
     const payload = {
       IamInstanceProfile: {
@@ -454,8 +418,58 @@ export default class Node extends Model {
       InstanceId: idInstance,
     }
 
-    const data = await ec2.associateIamInstanceProfile(payload).promise()
+    const data = await AwsGlobal.ec2.associateIamInstanceProfile(payload).promise()
     if (data.IamInstanceProfileAssociation) return data.IamInstanceProfileAssociation.State
     return null
   }
+
+  private async install() {
+    const {idNetwork, idSecurityGroup, idImage, keyPair} = this
+
+    if (!idNetwork) abort('system.error.fieldNotDefined')
+    if (!idSecurityGroup) abort('system.error.fieldNotDefined')
+    if (!idImage) abort('system.error.fieldNotDefined')
+    if (!keyPair) abort('system.error.fieldNotDefined')
+
+    const payload = {
+      BlockDeviceMappings: [
+        {
+          DeviceName: Node.DEFAULT_DEVICE_NAME,
+          Ebs: {
+            DeleteOnTermination: true,
+          },
+        },
+      ],
+      ImageId: idImage!,
+      InstanceType: Node.DEFAULT_INSTANCE_TYPE,
+      KeyName: keyPair!,
+      SecurityGroupIds: [idSecurityGroup!],
+      MinCount: 1,
+      MaxCount: 1,
+      TagSpecifications: [
+        {
+          ResourceType: Node.DEFAULT_RESOURCE_TYPE,
+          Tags: [
+            {
+              Key: Node.DEFAULT_NETWORK_TAG,
+              Value: idNetwork!,
+            },
+          ],
+        },
+      ],
+    }
+
+    console.log('Running Instances...')
+    const data = await AwsGlobal.ec2.runInstances(payload).promise()
+
+    if (data.Instances && data.Instances[0]) this.idInstance = data.Instances[0].InstanceId || null
+
+    if (this.idInstance && this.instanceProfile) {
+      console.log('Attaching Instance Profile...')
+      const status = await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
+      console.log(`Status: ${status || 'null'}`)
+    }
+
+  }
+
 }

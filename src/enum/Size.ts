@@ -1,5 +1,5 @@
 export enum Size {
-  SMALL,
-  MEDIUM,
-  BIG,
+  T2_NANO = 't2.nano',
+  T2_MICRO = 't2.micro',
+  T2_SMALL = 't2.small',
 }

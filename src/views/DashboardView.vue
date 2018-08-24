@@ -2,12 +2,12 @@
   <div class="app-container">
     <div class="app-layout app-layout-large">
 
-      <div class="p-10">
-        <div class="row horiz">
-          <div class="col">
-            <button @click="signOut()">Logout</button>
-            <button @click="populateList">Reload List</button>
-          </div>
+      <div class="row horiz">
+        <div class="col">
+          <button @click="signOut()">Logout</button>
+        </div>
+        <div class="col">
+          <button @click="populateList">Reload List</button>
         </div>
       </div>
 
@@ -15,12 +15,12 @@
         <div class="panel-header">
           <div class="panel-title col weight-1">Network</div>
           <div>
-            <button class="primary" @click="create">Create Node</button>
+            <router-link class="btn primary" to="/node/new">Create Node</router-link>
           </div>
         </div>
 
         <await name="nodeList">
-          <div class="row horiz items-center" v-for="(node, i) in list" :key="i">
+          <div class="row horiz items-center" v-for="(item, i) in list" :key="i">
             <div class="col weight-1">
               <div class="panel">
                 <div class="panel-title">
@@ -31,28 +31,28 @@
                 <div>
                   <strong>ID Network: </strong>
                   <span>
-                    {{node.idNetwork}}
+                    {{item.idNetwork}}
                   </span>
                 </div>
 
                 <div>
                   <strong>ID Image: </strong>
                   <span>
-                    {{node.idImage}}
+                    {{item.idImage}}
                   </span>
                 </div>
 
                 <div>
                   <strong>ID Security Group: </strong>
                   <span>
-                    {{node.idSecurityGroup}}
+                    {{item.idSecurityGroup}}
                   </span>
                 </div>
 
                 <div>
                   <strong>ID Instance: </strong>
                   <span>
-                    {{node.idInstance}}
+                    {{item.idInstance}}
                   </span>
                 </div>
               </div>
@@ -66,7 +66,7 @@
 </template>
 
 <script lang="ts">
-  import {Component, Prop, Vue} from 'vue-property-decorator'
+  import {Component, Vue} from 'vue-property-decorator'
   import {Action} from 'vuex-class'
   import Node from '@/model/Node'
   import {$} from '@/simpli'
@@ -81,20 +81,12 @@
       await this.populateList()
     }
 
-    async create() {
-      await new Node().create(true)
-      await this.populateList()
-    }
-
     async populateList() {
-      try {
-        $.await.init('nodeList')
+      const fetch = async () => {
         this.list = await Node.list()
-        $.await.done('nodeList')
-      } catch (e) {
-        $.await.error('nodeList')
-        throw e
       }
+
+      await $.await.run(fetch, 'nodeList', 2000)
     }
   }
 </script>

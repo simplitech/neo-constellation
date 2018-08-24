@@ -39,6 +39,7 @@
 }
 
 html {
+  @extend .pal-purple-67.bg;
   @extend .font-open-sans;
   @extend .f-light;
   @extend .pal-black.text;
@@ -261,6 +262,7 @@ form {
     }
 
     .control-label {
+      font-weight: bold;
       margin-bottom: 4px;
     }
 
@@ -337,13 +339,18 @@ input:not([type=submit]):not([type=checkbox]):not([type=radio]), select, textare
   outline: none;
   padding: 2px 5px;
   vertical-align: middle;
-  font-size: 1.2em;
+  font-size: 1em;
+  font-weight: 300;
   transition: all 0.4s ease-out, box-shadow 0.4s ease-out, color 0.4s ease-out;
 
   &:focus {
     @extend .pal-purple-ee.border;
     @extend .pal-purple-ee.text;
   }
+}
+
+select {
+  height: 38px;
 }
 
 footer {
@@ -369,6 +376,7 @@ button, .btn {
   cursor: pointer;
   user-select: none;
   text-decoration: none;
+  height: auto;
 
   padding: 6px 16px;
   margin: 0 2px 4px 2px;

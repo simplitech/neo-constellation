@@ -3,7 +3,8 @@ import * as types from '@/store/mutation-types'
 import {AuthState, RootState} from '@/types/store'
 import {$, push, successAndPush, errorAndPush, infoAndPush, sleep} from '@/simpli'
 import Authentication from '@/model/Authentication'
-import AWS from 'aws-sdk'
+import AWS, {EC2} from 'aws-sdk'
+import AwsGlobal from '@/model/AwsGlobal'
 
 // initial state
 const state: AuthState = {
@@ -42,6 +43,8 @@ const actions: ActionTree<AuthState, RootState> = {
     const {accessKeyId, secretAccessKey} = model
     AWS.config.update({accessKeyId, secretAccessKey})
 
+    AwsGlobal.ec2 = new EC2()
+
     localStorage.setItem('accessKeyId', accessKeyId)
     localStorage.setItem('secretAccessKey', secretAccessKey)
 
@@ -62,13 +65,17 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param dispatch
    * @param commit
    * @param getters
+   * @param state
    */
-  auth: async ({dispatch, commit, getters}) => {
+  auth: async ({dispatch, commit, getters, state}) => {
     commit(types.POPULATE)
     const {isLogged, accessKeyId, secretAccessKey} = getters
 
     if (isLogged) {
       AWS.config.update({accessKeyId, secretAccessKey})
+
+      AwsGlobal.ec2 = new EC2()
+
       state.eventListener.auth.forEach((item) => item())
     } else {
       commit(types.SET_UNAUTHENTICATED_PATH, $.route.path)

@@ -132,6 +132,10 @@
   @include palette(rgba(255, 255, 255, 0.30));
 }
 
+.pal-white-20 {
+  @include palette(rgba(255, 255, 255, 0.20));
+}
+
 .pal-white-15 {
   @include palette(rgba(255, 255, 255, 0.15));
 }

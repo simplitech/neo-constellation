@@ -14,8 +14,8 @@ import {Action} from 'vuex-class'
 export default class DefaultPanelLayout extends Vue {
   @Action('auth/auth') auth?: Function
 
-  created() {
-    this.auth!()
+  async created() {
+    await this.auth!()
   }
 }
 </script>
