@@ -63,6 +63,7 @@ export default {
       invalidDate: 'The field \'{0}\' has not valid date',
       passwordLength: 'The password must have between {0} and {1} characters',
       samePassword: 'The fields password must match',
+      invalidPassword: 'Invalid password',
       length: 'The field \'{0}\' must have between {1} and {2} characters',
       maxLength: 'The field \'{0}\' must not exceed {1} characters',
       minLength: 'The field \'{0}\' must have at least {1} characters',

@@ -2,6 +2,7 @@ import {store} from '@/store'
 import Authentication from '@/model/Authentication'
 
 export const isLogged = () => store.getters['auth/isLogged']
+export const username = () => store.getters['auth/username']
 export const accessKeyId = () => store.getters['auth/accessKeyId']
 export const secretAccessKey = () => store.getters['auth/secretAccessKey']
 export const auth = () => store.dispatch('auth/auth')

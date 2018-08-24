@@ -9,6 +9,9 @@
         <div class="col">
           <button @click="populateList">Reload List</button>
         </div>
+        <div class="col">
+          <button @click="sendCommand">Send Command</button>
+        </div>
       </div>
 
       <div class="panel">
@@ -87,6 +90,10 @@
       }
 
       await $.await.run(fetch, 'nodeList', 2000)
+    }
+
+    async sendCommand() {
+      await new Node().sendShellScript('a')
     }
   }
 </script>

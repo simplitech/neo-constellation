@@ -15,6 +15,7 @@ export interface RootState {
  * Auth Module
  */
 export interface AuthState {
+  username?: string,
   accessKeyId?: string,
   secretAccessKey?: string,
   unauthenticatedPath?: string,
