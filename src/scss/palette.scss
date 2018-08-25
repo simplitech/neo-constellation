@@ -168,6 +168,10 @@
   @include palette(#ffda44);
 }
 
+.pal-raspberry {
+  @include palette(rgba(168, 2, 75, 1));
+}
+
 .pal-white-five {
   @include palette(#f0f0f0);
 }

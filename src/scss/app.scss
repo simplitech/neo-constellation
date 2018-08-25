@@ -20,15 +20,21 @@
 }
 
 .fade-enter-active, .fade-leave-active,
-.fade-y-enter-active, .fade-y-leave-active {
+.fade-y-up-enter-active, .fade-y-up-leave-active,
+.fade-y-down-enter-active, .fade-y-down-leave-active {
   transition: opacity ease-out .4s, transform ease-out .4s;
 }
 .fade-enter, .fade-leave-to,
-.fade-y-enter, .fade-y-leave-to {
+.fade-y-up-enter, .fade-y-up-leave-to,
+.fade-y-down-enter, .fade-y-down-leave-to {
   opacity: 0;
 }
-.fade-y-enter, .fade-y-leave-to {
+.fade-y-down-enter, .fade-y-down-leave-to {
   transform: translateY(-20px);
+}
+
+.fade-y-up-enter, .fade-y-up-leave-to {
+  transform: translateY(20px);
 }
 
 .fade-x-enter-active, .fade-x-leave-active {
@@ -49,7 +55,7 @@ body {
   @extend .pal-purple-4c.bg;
   min-height: 100vh;
   margin: 0;
-  background: linear-gradient(135deg, #b37ee8 0%,#7b20ca 51%,#390c72 100%);
+  background: linear-gradient(135deg, #b37ee8 0%, #7b20ca 51%, #390c72 100%);
 }
 
 nav {
@@ -277,28 +283,117 @@ form {
 }
 
 button, input[type=submit], .btn {
-  @extend .pal-purple-67.bg;
+  @extend .font-open-sans;
+  @extend .f-600;
+  @extend .pal-black-0-23.bg;
   @extend .pal-white-69.text;
+
+  transition: background 0.4s ease-out, box-shadow 0.4s ease-out, color 0.4s ease-out;
 
   border: none;
   text-transform: uppercase;
   user-select: none;
-  height: 35px;
-  line-height: 35px;
-  border-radius: 4px;
   min-width: 90px;
   outline: none;
   cursor: pointer;
-  padding: 0 10px;
-  font-size: 100%;
   display: inline-block;
   text-decoration: none;
   text-align: center;
-  transition: background 0.4s ease-out, box-shadow 0.4s ease-out, color 0.4s ease-out;
-  margin: 3px;
+
+  padding: 6px 16px;
+  margin: 0 2px 4px 2px;
+
+  height: auto;
+
+  font-size: 14px;
+  font-style: normal;
+  font-stretch: normal;
+  line-height: normal;
+  letter-spacing: normal;
+  border-radius: 8px;
+
+  &.basic {
+    background: none;
+    &:hover {
+      background: none;
+    }
+
+    &.primary {
+      @extend .pal-purple-67.text;
+      &:hover {
+        @extend .pal-purple-67.text.lighten;
+      }
+    }
+
+    &.success {
+      @extend .pal-nasty-green.text;
+      &:hover {
+        @extend .pal-nasty-green.text.lighten;
+      }
+    }
+
+    &.warning {
+      @extend .pal-light-gold.text;
+      &:hover {
+        @extend .pal-light-gold.text.lighten;
+      }
+    }
+
+    &.danger {
+      @extend .pal-raspberry.text;
+      &:hover {
+        @extend .pal-raspberry.text.lighten;
+      }
+    }
+  }
+
+  &.primary {
+    @extend .pal-purple-67.bg;
+
+    &:hover {
+      @extend .pal-purple-67.bg.lighten;
+      @extend .pal-white.text;
+    }
+  }
+
+  &.success {
+    @extend .pal-nasty-green.bg;
+    &:hover {
+      @extend .pal-nasty-green.bg.lighten;
+      @extend .pal-white.text;
+    }
+  }
+
+  &.warning {
+    @extend .pal-light-gold.bg;
+    @extend .pal-black-0-50.text;
+
+    &:hover {
+      @extend .pal-light-gold.bg.darken;
+      @extend .pal-black-0-80.text;
+    }
+  }
+
+  &.danger {
+    @extend .pal-raspberry.bg;
+    &:hover {
+      @extend .pal-raspberry.bg.lighten;
+      @extend .pal-white.text;
+    }
+  }
+
+  &.icon {
+    line-height: 0;
+    padding: 10px;
+    border-radius: 50%;
+  }
 
   &:hover {
-    @extend .pal-purple-ee.bg;
+    @extend .pal-black-0-50.bg;
+    @extend .pal-white.text;
+  }
+  &:focus {
+    @extend .pal-white-50.box-shadow.highlight;
     @extend .pal-white.text;
   }
 
@@ -354,55 +449,6 @@ select {
 }
 
 footer {
-}
-
-button, .btn {
-  @extend .font-open-sans;
-  @extend .f-600;
-  @extend .pal-black-0-23.bg;
-  @extend .pal-white-69.text;
-
-  &.primary {
-    @extend .pal-purple-67.bg;
-
-    &:hover {
-      @extend .pal-purple-ee.bg;
-      @extend .pal-white.text;
-    }
-  }
-
-  transition: background 0.4s ease-out, box-shadow 0.4s ease-out, color 0.4s ease-out;
-  border: none;
-  cursor: pointer;
-  user-select: none;
-  text-decoration: none;
-  height: auto;
-
-  padding: 6px 16px;
-  margin: 0 2px 4px 2px;
-
-  font-size: 14px;
-  font-style: normal;
-  font-stretch: normal;
-  line-height: normal;
-  letter-spacing: normal;
-  border-radius: 8px;
-  outline: none;
-
-  &.icon {
-    line-height: 0;
-    padding: 10px;
-    border-radius: 50%;
-  }
-
-  &:hover {
-    @extend .pal-black-0-50.bg;
-    @extend .pal-white.text;
-  }
-  &:focus {
-    @extend .pal-white-50.box-shadow.highlight;
-    @extend .pal-white.text;
-  }
 }
 
 h1, h2, h3, h4, h5, h6, p, a {

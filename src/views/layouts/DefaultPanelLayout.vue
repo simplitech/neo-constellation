@@ -33,7 +33,7 @@
     </header>
 
     <div class="horiz nowrap pt-80">
-      <transition name="fade-y" mode="out-in">
+      <transition name="fade-y-down" mode="out-in">
         <router-view class="weight-1"/>
       </transition>
     </div>

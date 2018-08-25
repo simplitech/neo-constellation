@@ -20,56 +20,118 @@
         </div>
       </div>
 
-      <await name="networks">
+      <await name="networks" effect="fade-y-up">
 
         <div class="panel mb-10" v-for="(network, i) in networks" :key="i">
           <div class="panel-header">
-            <div class="panel-title col weight-1">
-              <i class="fa fa-cubes"></i>
-              {{$t('classes.Network.title')}}
+            <div class="mr-15">
+              <div class="panel-title">
+                <i class="fa fa-tasks"></i>
+                {{$t('classes.Network.title')}}
+              </div>
             </div>
-            <span>
-                  #{{network.$id}}
-                </span>
+
+            <div class="label primary">
+              <div class="label-prefix">
+                {{$t('classes.Network.columns.$id')}}
+              </div>
+              <span>{{network.$id}}</span>
+            </div>
           </div>
 
-          <div class="row horiz items-center" v-for="(node, j) in network.nodes" :key="j">
+          <div class="row compact horiz items-center" v-for="(node, j) in network.nodes" :key="j">
             <div class="col weight-1">
-              <div class="panel">
-                <div class="panel-title">
-                  <span>
-                    {{$t('classes.Node.columns.name')}}
-                  </span>
-                  ({{node.name}})
+              <div class="panel compressed">
+
+                <div class="panel-header">
+                  <div class="horiz w-full">
+                    <div class="col">
+                      <div class="label" :class="$t(`classes.Node.stateClass.${node.state}`)">
+                        <div class="label-prefix">
+                          <i class="fa fa-database"></i>
+                          {{$t('classes.Node.title')}}
+                        </div>
+                        <strong>
+                          {{$t(`classes.Node.state.${node.state}`)}}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div class="col weight-1" v-if="[80].includes(node.state)">
+                      <button @click="node.turnOn()" class="basic success">
+                        <i class="fa fa-play"></i>
+                        {{$t('app.turnOn')}}
+                      </button>
+                    </div>
+
+                    <div class="col weight-1" v-else-if="[16].includes(node.state)">
+                      <button @click="node.turnOff()" class="basic warning">
+                        <i class="fa fa-pause"></i>
+                        {{$t('app.turnOff')}}
+                      </button>
+                    </div>
+
+                    <div class="col" v-if="[16, 80].includes(node.state)">
+                      <button class="basic danger">
+                        <i class="fa fa-remove"></i>
+                        {{$t('app.terminate')}}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
-                <div>
-                  <strong>{{$t('classes.Node.columns.$id')}}:</strong>
-                  <span>
-                    {{node.idInstance}}
-                  </span>
+                <div class="horiz">
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.name')}}
+                      </div>
+                      <span>
+                          {{node.name}}
+                        </span>
+                    </div>
+                  </div>
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.$id')}}
+                      </div>
+                      <span>
+                          {{node.idInstance}}
+                        </span>
+                    </div>
+                  </div>
+
                 </div>
 
-                <div>
-                  <strong>{{$t('classes.Node.columns.idNetwork')}}:</strong>
-                  <span>
-                    {{node.idNetwork}}
-                  </span>
+                <div class="horiz">
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.idImage')}}
+                      </div>
+                      <span>
+                          {{node.idImage}}
+                        </span>
+                    </div>
+                  </div>
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.idSecurityGroup')}}
+                      </div>
+                      <span>
+                          {{node.idSecurityGroup}}
+                        </span>
+                    </div>
+                  </div>
+
                 </div>
 
-                <div>
-                  <strong>{{$t('classes.Node.columns.idImage')}}</strong>
-                  <span>
-                    {{node.idImage}}
-                  </span>
-                </div>
-
-                <div>
-                  <strong>{{$t('classes.Node.columns.idSecurityGroup')}}</strong>
-                  <span>
-                    {{node.idSecurityGroup}}
-                  </span>
-                </div>
               </div>
             </div>
           </div>

@@ -35,7 +35,7 @@
 
             <div class="panel-footer items-end">
               <await name="login" spinner="BeatLoader">
-                <input type="submit" :value="$t('view.login.form.submit')"/>
+                <input type="submit" class="primary" :value="$t('view.login.form.submit')"/>
               </await>
             </div>
           </form>

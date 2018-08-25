@@ -43,7 +43,7 @@ $.await.defaultSpinnerPadding = '0'
 $.await.defaultSpinnerScale = 1
 
 $.modal.defaultBody = document.body
-$.modal.defaultTransition = 'fade-y'
+$.modal.defaultTransition = 'fade-y-down'
 $.modal.defaultBackgroundTransition = 'fade'
 $.modal.defaultClosable = true
 $.modal.defaultCloseOutside = true

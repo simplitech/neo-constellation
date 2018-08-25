@@ -14,6 +14,7 @@ import {Instance, Tag} from 'aws-sdk/clients/ec2'
 import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
+import {State} from '@/enum/State'
 import AwsGlobal from '@/model/AwsGlobal'
 
 const RSA = require('node-rsa')
@@ -134,6 +135,8 @@ export default class Node extends Model {
 
   availabilityZone: Zone | null = null
 
+  state: State | null = null
+
   keyPair: string | null = null
 
   instanceProfile: string | null = null
@@ -170,6 +173,7 @@ export default class Node extends Model {
     if (idNetworkTag) this.idNetwork = idNetworkTag.Value as string
     this.idInstance = instance.InstanceId || null
     this.idImage = instance.ImageId || null
+    this.state = instance.State && instance.State.Code || null
     this.keyPair = instance.KeyName || null
 
     // TODO: replace to Regex match (/network-\n*-sg/g)
@@ -212,6 +216,82 @@ export default class Node extends Model {
       await this.createInstanceProfile(Node.DEFAULT_INSTANCE_PROFILE_NAME)
 
     await this.install()
+  }
+
+  /**
+   * Turn On a EC2 instance
+   * @returns {Promise<void>}
+   */
+  async turnOn() {
+    const {switchRegion} = AwsGlobal
+    const {idInstance, region} = this
+
+    if (!idInstance) abort('system.error.fieldNotDefined')
+    if (!region) abort('system.error.fieldNotDefined')
+
+    switchRegion(this.region!)
+    const ec2 = new EC2()
+
+    const payload = {
+      InstanceIds: [idInstance!],
+    }
+
+    const waitPayload = {
+      Filters: [
+        {
+          Name: 'instance-id',
+          Values: [idInstance!],
+        },
+      ],
+    }
+
+    $.snotify.info(idInstance, $.t('log.node.startInstances'))
+    await ec2.startInstances(payload).promise()
+
+    this.state = State.PENDING
+
+    await ec2.waitFor('instanceRunning', waitPayload).promise()
+    $.snotify.info(idInstance, $.t('log.node.startedInstances'))
+
+    this.state = State.RUNNING
+  }
+
+  /**
+   * Turn Off a EC2 instance
+   * @returns {Promise<void>}
+   */
+  async turnOff() {
+    const {switchRegion} = AwsGlobal
+    const {idInstance, region} = this
+
+    if (!idInstance) abort('system.error.fieldNotDefined')
+    if (!region) abort('system.error.fieldNotDefined')
+
+    switchRegion(this.region!)
+    const ec2 = new EC2()
+
+    const payload = {
+      InstanceIds: [idInstance!],
+    }
+
+    const waitPayload = {
+      Filters: [
+        {
+          Name: 'instance-id',
+          Values: [idInstance!],
+        },
+      ],
+    }
+
+    $.snotify.info(idInstance, $.t('log.node.stopInstances'))
+    await ec2.stopInstances(payload).promise()
+
+    this.state = State.STOPPING
+
+    await ec2.waitFor('instanceStopped', waitPayload).promise()
+    $.snotify.info(idInstance, $.t('log.node.stoppedInstances'))
+
+    this.state = State.STOPPED
   }
 
   async populateIdImage() {

@@ -2,9 +2,21 @@
 @mixin palette($hex)  {
   &.bg {
     background: $hex;
+    &.lighten {
+      background: lighten($hex, 15%);
+    }
+    &.darken {
+      background: darken($hex, 15%);
+    }
   }
   &.text {
     color: $hex;
+    &.lighten {
+      color: lighten($hex, 15%);
+    }
+    &.darken {
+      color: darken($hex, 15%);
+    }
   }
   &.border {
     border-color: $hex;
