@@ -1,10 +1,10 @@
 import AWS, {EC2, S3, SSM} from 'aws-sdk'
 import IAM from 'aws-sdk/clients/iam'
-import Network from '@/model/Network'
-import Node from '@/model/Node'
-import {Region} from '@/enum/Region'
 import {AvailabilityZone, Region as RegionAws} from 'aws-sdk/clients/ec2'
-import _ from 'lodash'
+import Network from '@/model/Network'
+import {Region} from '@/enum/Region'
+import {Size} from '@/enum/Size'
+import {Zone} from '@/enum/Zone'
 
 export default abstract class AwsGlobal {
 
@@ -53,10 +53,24 @@ export default abstract class AwsGlobal {
   }
 
   /**
-   * Returns availability zones from AWS
-   * @returns {Promise<string[]>}
+   * Returns sizes from AWS
+   * @returns {Promise<Size[]>}
    */
-  static async availabilityZones(region?: Region): Promise<string[]> {
+  static async sizes(): Promise<Size[]> {
+    const list: Size[] = []
+
+    for (const item in Size) {
+      if (item) list.push(Size[item] as Size)
+    }
+
+    return list
+  }
+
+  /**
+   * Returns availability zones from AWS
+   * @returns {Promise<Zone[]>}
+   */
+  static async availabilityZones(region?: Region): Promise<Zone[]> {
     let ec2 = AwsGlobal.ec2
 
     if (region) {
@@ -64,14 +78,14 @@ export default abstract class AwsGlobal {
       ec2 = new EC2()
     }
 
-    let list: string[] = []
+    let list: Zone[] = []
 
     const resp = await ec2.describeAvailabilityZones().promise()
 
     if (resp.AvailabilityZones) {
       list = resp.AvailabilityZones
         .filter((item: AvailabilityZone) => !!item.ZoneName)
-        .map((item: AvailabilityZone) => item.ZoneName!)
+        .map((item: AvailabilityZone) => item.ZoneName!) as Zone[]
     }
 
     return list

@@ -4,65 +4,76 @@
 
       <div class="row horiz">
         <div class="col">
-          <button @click="populateList">Reload List</button>
+          <router-link class="btn primary" to="/node/new">
+            {{$t('view.dashboard.createNode')}}
+          </router-link>
         </div>
         <div class="col">
-          <button @click="sendCommand">Send Command</button>
+          <button @click="populateList">
+            {{$t('view.dashboard.reloadList')}}
+          </button>
         </div>
         <div class="col">
-          <router-link class="btn primary" to="/node/new">Create Node</router-link>
+          <button @click="sendCommand">
+            {{$t('view.dashboard.sendCommand')}}
+          </button>
         </div>
       </div>
 
       <await name="networks">
 
-        <div class="panel m-10" v-for="(network, i) in networks" :key="i">
-              <div class="panel-header">
-                <div class="panel-title col weight-1">Network</div>
-                <span>
-              #{{network.$id}}
-            </span>
-              </div>
+        <div class="panel mb-10" v-for="(network, i) in networks" :key="i">
+          <div class="panel-header">
+            <div class="panel-title col weight-1">
+              <i class="fa fa-cubes"></i>
+              {{$t('classes.Network.title')}}
+            </div>
+            <span>
+                  #{{network.$id}}
+                </span>
+          </div>
 
-              <div class="row horiz items-center" v-for="(node, j) in network.nodes" :key="j">
-                <div class="col weight-1">
-                  <div class="panel">
-                    <div class="panel-title">
-                      <span>Node</span>
-                      {{i}}
-                    </div>
-
-                    <div>
-                      <strong>ID Network: </strong>
-                      <span>
-                    {{node.idNetwork}}
+          <div class="row horiz items-center" v-for="(node, j) in network.nodes" :key="j">
+            <div class="col weight-1">
+              <div class="panel">
+                <div class="panel-title">
+                  <span>
+                    {{$t('classes.Node.columns.name')}}
                   </span>
-                    </div>
+                  ({{node.name}})
+                </div>
 
-                    <div>
-                      <strong>ID Image: </strong>
-                      <span>
-                    {{node.idImage}}
-                  </span>
-                    </div>
-
-                    <div>
-                      <strong>ID Security Group: </strong>
-                      <span>
-                    {{node.idSecurityGroup}}
-                  </span>
-                    </div>
-
-                    <div>
-                      <strong>ID Instance: </strong>
-                      <span>
+                <div>
+                  <strong>{{$t('classes.Node.columns.$id')}}:</strong>
+                  <span>
                     {{node.idInstance}}
                   </span>
-                    </div>
-                  </div>
+                </div>
+
+                <div>
+                  <strong>{{$t('classes.Node.columns.idNetwork')}}:</strong>
+                  <span>
+                    {{node.idNetwork}}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>{{$t('classes.Node.columns.idImage')}}</strong>
+                  <span>
+                    {{node.idImage}}
+                  </span>
+                </div>
+
+                <div>
+                  <strong>{{$t('classes.Node.columns.idSecurityGroup')}}</strong>
+                  <span>
+                    {{node.idSecurityGroup}}
+                  </span>
                 </div>
               </div>
             </div>
+          </div>
+        </div>
 
       </await>
 

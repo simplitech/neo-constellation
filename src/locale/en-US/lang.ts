@@ -85,12 +85,34 @@ export default {
     },
   },
 
+  log: {
+    node: {
+      describeImages: 'Listing OS Images...',
+      describeSecurityGroups: 'Listing Security Groups...',
+      describeKeyPairs: 'Listing Key Pairs...',
+      describeVpcs: 'Listing VPCs...',
+      createSecurityGroup: 'Creating a Security Group...',
+      importKeyPair: 'Importing Key Pair...',
+      createKeyPair: 'Creating a Key Pair...',
+      getObject: 'Getting Bucket in S3...',
+      putObject: 'Puting Bucket into S3...',
+      createBucket: 'Creating Bucket into S3...',
+      waitFor: 'Waiting for instance to be running...',
+      instanceRunning: 'Instance is running!',
+      associateIamInstanceProfile: 'AttachingrunInstances Instance Profile...',
+      runInstances: 'Running Instances...',
+      attachInstanceProfile: 'Attaching Instance Profile...',
+      instanceCreated: 'Instance Created',
+    },
+  },
+
   app: {
     title: 'Neo Constellation',
     anonymous: 'Anonymous',
     logout: 'Logout',
     menu: 'Menu',
     add: 'Add',
+    create: 'Create',
     back: 'Back',
     export: 'Export',
     select: 'Select',
@@ -147,6 +169,17 @@ export default {
         submit: 'Login',
       },
     },
+    dashboard: {
+      title: 'Dashboard',
+      createNode: 'Create Node',
+      reloadList: 'Reload List',
+      sendCommand: 'Send Command',
+    },
+    persistNode: {
+      title: 'Create Node',
+      titleAlt: 'Edit Node',
+      newNetwork: 'New Network',
+    },
   },
 
   classes: {
@@ -160,10 +193,25 @@ export default {
     Node: {
       title: 'Node',
       columns: {
-        name: 'Name',
+        $id: 'Node ID',
+        idNetwork: 'Network ID',
+        idImage: 'OS Image ID',
+        idSecurityGroup: 'Security Group ID',
+        name: 'Node name',
         size: 'Size',
         region: 'Region',
         availabilityZone: 'Availability Zone',
+        keyPair: 'Key Pair',
+        instanceProfile: 'Instace Profile',
+        groupName: 'Group Name',
+      },
+    },
+    Network: {
+      title: 'Network',
+      columns: {
+        $id: 'Network ID',
+        name: 'Network name',
+        nodes: 'Network nodes',
       },
     },
   },

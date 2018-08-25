@@ -6,7 +6,7 @@
         <div class="panel-header">
           <div class="panel-title col weight-1">
             <span>
-              Create Node
+              {{$t('view.persistNode.title')}}
             </span>
           </div>
         </div>
@@ -16,19 +16,15 @@
             <div class="col weight-2">
               <div class="form-group">
                 <label for="model-idNetwork" class="control-label">
-                  Networks
+                  {{$t('classes.Network.title')}}
                 </label>
                 <select id="model-idNetwork" v-model="model.idNetwork">
-                  <option :value="null">{{$t('app.select')}}</option>
+                  <option :value="null">{{$t('view.persistNode.newNetwork')}}</option>
                   <option v-for="(item, i) in networkList" :key="i" :value="item">
                     {{item}}
                   </option>
                 </select>
               </div>
-            </div>
-
-            <div class="col items-center">
-              <button type="button" class="w-full">New Network</button>
             </div>
           </div>
 
@@ -88,9 +84,9 @@
         </await>
 
         <div class="panel-footer items-end">
-          <button type="button" @click="back">Cancel</button>
+          <button type="button" @click="back">{{$t('app.cancel')}}</button>
           <await name="form" spinner="BeatLoader">
-            <button type="submit" class="primary">Create</button>
+            <button type="submit" class="primary">{{$t('app.create')}}</button>
           </await>
         </div>
       </form>
@@ -101,21 +97,21 @@
 
 <script lang="ts">
 import {Component, Watch, Vue} from 'vue-property-decorator'
-import {Action} from 'vuex-class'
-import {$, back} from '@/simpli'
+import {Getter, Action} from 'vuex-class'
+import {$, successAndPush, back} from '@/simpli'
 import Node from '@/model/Node'
-import {Size} from '@/enum/Size'
 import AwsGlobal from '@/model/AwsGlobal'
-import Network from '@/model/Network'
+import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
+import {Zone} from '@/enum/Zone'
 
 @Component
 export default class DashboardView extends Vue {
   model = new Node()
   networkList: string[] = []
   regionList: Region[] = []
-  sizeList = Size
-  zoneList: string[] = []
+  sizeList: Size[] = []
+  zoneList: Zone[] = []
   back = back
 
   @Watch('model.region')
@@ -133,6 +129,7 @@ export default class DashboardView extends Vue {
     const fetch = async () => {
       this.networkList = await AwsGlobal.networks()
       this.regionList = await AwsGlobal.regions()
+      this.sizeList = await AwsGlobal.sizes()
       await this.regionEvent(this.model.region)
     }
 
@@ -140,8 +137,13 @@ export default class DashboardView extends Vue {
   }
 
   async persist() {
-    await this.model.validate()
-    await this.model.create()
+    const fetch = async () => {
+      await this.model.validate()
+      await this.model.create()
+      successAndPush('system.success.persist', '/dashboard')
+    }
+
+    await $.await.run(fetch, 'form')
   }
 }
 </script>

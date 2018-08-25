@@ -1,8 +1,8 @@
 import {
   $,
+  info,
   abort,
   Model,
-  isLogged,
   accessKeyId,
   ValidationRequired,
   ValidationMaxLength,
@@ -10,7 +10,7 @@ import {
 
 import _ from 'lodash'
 import {EC2, S3, SSM, IAM} from 'aws-sdk'
-import {Instance, Reservation, Tag} from 'aws-sdk/clients/ec2'
+import {Instance, Tag} from 'aws-sdk/clients/ec2'
 import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
@@ -24,7 +24,6 @@ export default class Node extends Model {
 
   static readonly DEFAULT_KEY_NAME = 'NeoNode'
   static readonly DEFAULT_DEVICE_NAME = '/dev/sda1'
-  static readonly DEFAULT_INSTANCE_TYPE = 't2.micro'
   static readonly DEFAULT_RESOURCE_TYPE = 'instance'
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
   static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
@@ -96,7 +95,7 @@ export default class Node extends Model {
 
           if (instance) {
             const node = new Node()
-            node.serialise(instance)
+            node.get(instance)
             nodes.push(node)
           }
         }
@@ -111,19 +110,6 @@ export default class Node extends Model {
       .value() as Node[]
   }
 
-  @ValidationRequired()
-  @ValidationMaxLength(60)
-  name: string | null = null
-
-  @ValidationRequired()
-  size: Size | null = null
-
-  @ValidationRequired()
-  region: Region | null = null
-
-  @ValidationRequired()
-  availabilityZone: Zone | null = null
-
   // Instance ID
   idInstance: string | null = null
 
@@ -136,6 +122,18 @@ export default class Node extends Model {
   // Security Group ID
   idSecurityGroup: string | null = null
 
+  @ValidationRequired()
+  @ValidationMaxLength(60)
+  name: string | null = null
+
+  @ValidationRequired()
+  size: Size | null = null
+
+  @ValidationRequired()
+  region: Region | null = null
+
+  availabilityZone: Zone | null = null
+
   keyPair: string | null = null
 
   instanceProfile: string | null = null
@@ -144,20 +142,32 @@ export default class Node extends Model {
     return `network-${this.idNetwork}-sg`
   }
 
-  constructor(network = shortid.generate(), region = AwsGlobal.DEFAULT_REGION) {
+  /**
+   * Node constructor
+   * @param {Region} region
+   */
+  constructor(region = AwsGlobal.DEFAULT_REGION) {
     super()
-
-    // Auth required
-    if (!isLogged()) abort('system.error.unauthorized')
-
-    if (network) this.idNetwork = network
     if (region) this.region = region
   }
 
-  serialise(instance: Instance) {
-    const tag = (instance.Tags || [] as Tag[]).find((tag: Tag) => tag.Key === Node.DEFAULT_NETWORK_TAG)
+  /**
+   * Gets the equivalent node of an EC2 instance
+   * @param {EC2.Instance} instance
+   */
+  get(instance: Instance) {
+    const tags = instance.Tags
 
-    if (tag) this.idNetwork = tag.Value as string
+    let nameTag: Tag | undefined
+    let idNetworkTag: Tag | undefined
+
+    if (tags) {
+      nameTag = tags.find((tag: Tag) => tag.Key === 'Name')
+      idNetworkTag = tags.find((tag: Tag) => tag.Key === Node.DEFAULT_NETWORK_TAG)
+    }
+
+    if (nameTag) this.name = nameTag.Value as string
+    if (idNetworkTag) this.idNetwork = idNetworkTag.Value as string
     this.idInstance = instance.InstanceId || null
     this.idImage = instance.ImageId || null
     this.keyPair = instance.KeyName || null
@@ -168,7 +178,20 @@ export default class Node extends Model {
     }
   }
 
+  /**
+   * Creates a new EC2 instance
+   * @returns {Promise<void>}
+   */
   async create() {
+    const {switchRegion} = AwsGlobal
+    const {idNetwork, region} = this
+
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idNetwork) this.idNetwork = shortid.generate()
+
+    switchRegion(this.region!)
+    AwsGlobal.ec2 = new EC2()
+
     const {groupName} = this
 
     await this.populateIdImage()
@@ -192,7 +215,6 @@ export default class Node extends Model {
   }
 
   async populateIdImage() {
-
     const payload = {
       Filters: [
         {
@@ -202,14 +224,13 @@ export default class Node extends Model {
       ],
     }
 
-    console.log('Listing OS Images...')
+    info('log.node.describeImages')
     const data = await AwsGlobal.ec2.describeImages(payload).promise()
 
     if (data.Images && data.Images[0]) this.idImage = data.Images[0].ImageId || null
   }
 
   async getSecurityGroupByName(name: string) {
-
     const payload = {
       Filters: [
         {
@@ -219,7 +240,7 @@ export default class Node extends Model {
       ],
     }
 
-    console.log('Listing Security Groups...')
+    info('log.node.describeSecurityGroups')
     const data = await AwsGlobal.ec2.describeSecurityGroups(payload).promise()
 
     if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId
@@ -228,7 +249,6 @@ export default class Node extends Model {
   }
 
   async getKeyPair(name: string) {
-
     const payload = {
       Filters: [
         {
@@ -238,7 +258,7 @@ export default class Node extends Model {
       ],
     }
 
-    console.log('Listing Key Pairs...')
+    info('log.node.describeKeyPairs')
     const data = await AwsGlobal.ec2.describeKeyPairs(payload).promise()
 
     if (data.KeyPairs && data.KeyPairs[0]) return data.KeyPairs[0].KeyName
@@ -257,14 +277,13 @@ export default class Node extends Model {
       ],
     }
 
-    console.log('Listing VPCs...')
+    info('log.node.describeVpcs')
     const data = await AwsGlobal.ec2.describeVpcs(payload).promise()
 
     if (data.Vpcs && data.Vpcs[0]) return data.Vpcs[0].VpcId
   }
 
   async createSecurityGroup(name: string) {
-
     const vpcId = await this.getDefaultVpc()
 
     const payload = {
@@ -273,7 +292,7 @@ export default class Node extends Model {
       VpcId: vpcId,
     }
 
-    console.log('Creating a Security Group...')
+    info('log.node.createSecurityGroup')
     const data = await AwsGlobal.ec2.createSecurityGroup(payload).promise()
 
     return data.GroupId || null
@@ -292,14 +311,14 @@ export default class Node extends Model {
         PublicKeyMaterial: publicKey,
       }
 
-      console.log('Importing Key Pair...')
+      info('log.node.importKeyPair')
       await ec2.importKeyPair(importParams).promise()
     } else {
       const payload = {
         KeyName: name,
       }
 
-      console.log('Creating a Key Pair...')
+      info('log.node.createKeyPair')
       const data = await ec2.createKeyPair(payload).promise()
 
       await this.createBucket(`neo-bucket-${accessKeyId()}`)
@@ -320,7 +339,7 @@ export default class Node extends Model {
 
       const s3 = new S3()
 
-      console.log('Getting Bucket in S3...')
+      info('log.node.getObject')
       const data = await s3.getObject(payload).promise()
 
       if (data) {
@@ -341,7 +360,7 @@ export default class Node extends Model {
 
     const s3 = new S3()
 
-    console.log('Puting Bucket into S3...')
+    info('log.node.putObject')
     return await s3.putObject(payload).promise()
   }
 
@@ -352,7 +371,7 @@ export default class Node extends Model {
 
     const s3 = new S3()
 
-    console.log('Creating Bucket into S3...')
+    info('log.node.createBucket')
     return await s3.createBucket(payload).promise()
   }
 
@@ -438,11 +457,9 @@ export default class Node extends Model {
 
     const iam = new IAM()
     return await iam.addRoleToInstanceProfile(payload).promise()
-
   }
 
   async attachInstanceProfile(idInstance: string, instanceProfileName: string) {
-
     const payload = {
       IamInstanceProfile: {
         Name: instanceProfileName,
@@ -461,12 +478,11 @@ export default class Node extends Model {
 
     // Newly created instances start on a 'pending' status.
     // Must wait for 'running'
-    console.log('Waiting for instance to be running...')
+    info('log.node.waitFor')
     await AwsGlobal.ec2.waitFor('instanceRunning', waitPayload).promise()
-    console.log('Instance is running! Attaching Instance Profile...')
+    info('log.node.instanceRunning')
 
     const data = await AwsGlobal.ec2.associateIamInstanceProfile(payload).promise()
-    console.log(data.IamInstanceProfileAssociation)
     if (data.IamInstanceProfileAssociation) return data.IamInstanceProfileAssociation.State
     return null
   }
@@ -489,19 +505,18 @@ export default class Node extends Model {
         Details: true,
       }
 
-      const resp = await AwsGlobal.ssm.listCommandInvocations(listPayload).promise()
-
-      console.log(resp)
-
+      await AwsGlobal.ssm.listCommandInvocations(listPayload).promise()
     }
   }
 
   private async install() {
-    const {idNetwork, idSecurityGroup, idImage, keyPair} = this
+    const {name, idNetwork, idSecurityGroup, idImage, availabilityZone, size, keyPair} = this
 
+    if (!name) abort('system.error.fieldNotDefined')
     if (!idNetwork) abort('system.error.fieldNotDefined')
     if (!idSecurityGroup) abort('system.error.fieldNotDefined')
     if (!idImage) abort('system.error.fieldNotDefined')
+    if (!size) abort('system.error.fieldNotDefined')
     if (!keyPair) abort('system.error.fieldNotDefined')
 
     const payload = {
@@ -514,15 +529,22 @@ export default class Node extends Model {
         },
       ],
       ImageId: idImage!,
-      InstanceType: Node.DEFAULT_INSTANCE_TYPE,
+      InstanceType: size!,
       KeyName: keyPair!,
       SecurityGroupIds: [idSecurityGroup!],
       MinCount: 1,
       MaxCount: 1,
+      Placement: {
+        AvailabilityZone: availabilityZone ? availabilityZone.toString() : undefined,
+      },
       TagSpecifications: [
         {
           ResourceType: Node.DEFAULT_RESOURCE_TYPE,
           Tags: [
+            {
+              Key: 'Name',
+              Value: name!,
+            },
             {
               Key: Node.DEFAULT_NETWORK_TAG,
               Value: idNetwork!,
@@ -532,17 +554,16 @@ export default class Node extends Model {
       ],
     }
 
-    console.log('Running Instances...')
+    info('log.node.runInstances')
     const data = await AwsGlobal.ec2.runInstances(payload).promise()
 
     if (data.Instances && data.Instances[0]) this.idInstance = data.Instances[0].InstanceId || null
 
     if (this.idInstance && this.instanceProfile) {
-      console.log('Attaching Instance Profile...')
+      info('log.node.attachInstanceProfile')
       await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
-      console.log('Instance Created')
+      info('log.node.instanceCreated')
     }
-
   }
 
 }
