@@ -9,8 +9,9 @@ import {
 } from '@/simpli'
 
 import _ from 'lodash'
-import {EC2, S3, SSM, IAM} from 'aws-sdk'
-import {Instance, Tag} from 'aws-sdk/clients/ec2'
+import {EC2, S3, SSM, IAM, CloudWatchLogs as CWL} from 'aws-sdk'
+import {Instance, Reservation, Tag} from 'aws-sdk/clients/ec2'
+import {OutputLogEvent} from 'aws-sdk/clients/cloudwatchlogs'
 import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
@@ -29,6 +30,7 @@ export default class Node extends Model {
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
   static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
   static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+  static readonly DEFAULT_LOG_GROUP = 'command-log'
   static readonly DEFAULT_ASSUME_ROLE_POLICY = {
     Version: '2012-10-17',
     Statement: [
@@ -40,6 +42,10 @@ export default class Node extends Model {
         Effect: 'Allow',
       },
     ],
+  }
+
+  static bucketName() {
+    return _.lowerCase(accessKeyId()).replace(/ /g, '')
   }
 
   /**
@@ -204,15 +210,18 @@ export default class Node extends Model {
    * @returns {Promise<void>}
    */
   async create() {
-    const {idNetwork, groupName} = this
-    if (!idNetwork) this.idNetwork = shortid.generate()
+
+    if (!this.idNetwork) this.idNetwork = shortid.generate()
+    const {groupName} = this
 
     await this.populateIdImage()
 
     // Get or Create
-    this.idSecurityGroup =
-      await this.getSecurityGroupByName(groupName) ||
-      await this.createSecurityGroup(groupName)
+    this.idSecurityGroup = await this.getSecurityGroupByName(groupName)
+    if (!this.idSecurityGroup) {
+      this.idSecurityGroup = await this.createSecurityGroup(groupName)
+      await this.setDefaultGroupRules()
+    }
 
     // Get or Create
     this.keyPair =
@@ -371,7 +380,7 @@ export default class Node extends Model {
     info('log.node.describeSecurityGroups')
     const data = await this.ec2.describeSecurityGroups(payload).promise()
 
-    if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId
+    if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId || null
 
     return null
   }
@@ -432,7 +441,7 @@ export default class Node extends Model {
   async createKeyPair(name: string) {
     this.switchRegion()
 
-    const privateKey = await this.getObject(`${name}.pem`, `neo-bucket-${accessKeyId()}`)
+    const privateKey = await this.getObject(`${name}.pem`, Node.bucketName())
 
     if (privateKey) {
       const publicKey = new RSA(privateKey).exportKey('public').slice(27, -25)
@@ -452,10 +461,10 @@ export default class Node extends Model {
       info('log.node.createKeyPair')
       const data = await this.ec2.createKeyPair(payload).promise()
 
-      await this.createBucket(`neo-bucket-${accessKeyId()}`)
+      await this.createBucket(Node.bucketName())
 
       const body = data.KeyMaterial
-      if (body) await this.putObject(`${name}.pem`, body, `neo-bucket-${accessKeyId()}`)
+      if (body) await this.putObject(`${name}.pem`, body, Node.bucketName())
     }
 
     return name
@@ -478,6 +487,7 @@ export default class Node extends Model {
       }
     } catch (error) {
       if (error.code === 'NoSuchBucket' || error.code === 'NoSuchKey') return
+      console.log(error)
       throw error
     }
   }
@@ -503,7 +513,12 @@ export default class Node extends Model {
     const s3 = new S3()
 
     info('log.node.createBucket')
-    return await s3.createBucket(payload).promise()
+    try {
+      const data = await s3.createBucket(payload).promise()
+      return data
+    } catch (e) {
+      console.log(e)
+    }
   }
 
   async getInstanceProfile(name: string) {
@@ -620,26 +635,121 @@ export default class Node extends Model {
     return null
   }
 
-  async sendShellScript(idInstance: string) {
+  async sendCommand(commands: string[]) {
+
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
     const payload = {
       DocumentName: 'AWS-RunShellScript',
-      InstanceIds: [idInstance],
+      CloudWatchOutputConfig: {
+        CloudWatchLogGroupName: 'command-log',
+        CloudWatchOutputEnabled: true,
+      },
+      InstanceIds: [idInstance!],
       Parameters: {
-        commands: ['yum install -y mysql'],
+        commands,
       },
     }
 
-    const data = await AwsGlobal.ssm.sendCommand(payload).promise()
+    AwsGlobal.switchRegion(region!)
 
-    if (data.Command && data.Command.Status === 'Success') {
-      const commandId = data.Command.CommandId
-      const listPayload = {
-        CommandId: commandId,
-        Details: true,
-      }
+    const ssm = new SSM()
 
-      await AwsGlobal.ssm.listCommandInvocations(listPayload).promise()
+    const data = await ssm.sendCommand(payload).promise()
+
+    if (data && data.Command) {
+      console.log(data.Command.CommandId)
+      return data.Command.CommandId
     }
+  }
+
+  async listCommands() {
+
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    this.switchRegion()
+
+    const payload = {
+      InstanceId: idInstance!,
+    }
+
+    AwsGlobal.switchRegion(region!)
+
+    const ssm = new SSM()
+
+    const data = await ssm.listCommands(payload).promise()
+    return data.Commands
+
+  }
+
+  async getCommandOutput(idCommand: string) {
+
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    const streamName = `${idCommand}/${idInstance!}/aws-runShellScript/stdout`
+
+    const payload = {
+      logGroupName: Node.DEFAULT_LOG_GROUP, /* required */
+      logStreamName: streamName, /* required */
+      startFromHead: true,
+    }
+
+    AwsGlobal.switchRegion(region!)
+
+    const cwl = new CWL()
+    const data = await cwl.getLogEvents(payload).promise()
+    let output
+    if (data && data.events) {
+      output = data.events.map( (event) => (event.message as string).split(/(?:\n|\r)/g))
+      return _.flattenDeep(output)
+    }
+    return []
+
+  }
+  async setSecurityGroupInboundRule(protocol: string, port: {from: number, to: number} | number) {
+    this.switchRegion()
+
+    const {idSecurityGroup} = this
+
+    if (!idSecurityGroup) abort('system.error.fieldNotDefined')
+    if (protocol !== 'tcp' && 'udp') abort('system.error.invalidProtocol')
+
+    if (typeof port === 'number') {
+      port = {from: port, to: port}
+    }
+
+    const payload = {
+      GroupId: idSecurityGroup!,
+      IpPermissions: [
+        {
+          FromPort: port.from,
+          IpProtocol: protocol,
+          IpRanges: [
+            {
+            CidrIp: '0.0.0.0/0',
+            },
+          ],
+          ToPort: port.to,
+        },
+      ],
+    }
+
+    const data = await this.ec2.authorizeSecurityGroupIngress(payload).promise()
+
+  }
+
+  private async setDefaultGroupRules() {
+    info('log.node.setSecurityGroupRules')
+    await this.setSecurityGroupInboundRule('tcp', 22)
+    await this.setSecurityGroupInboundRule('tcp', 20332)
+    await this.setSecurityGroupInboundRule('tcp', 20333)
+    await this.setSecurityGroupInboundRule('tcp', 20334)
   }
 
   private async install() {

@@ -13,11 +13,6 @@
             {{$t('view.dashboard.reloadList')}}
           </button>
         </div>
-        <div class="col">
-          <button @click="sendCommand">
-            {{$t('view.dashboard.sendCommand')}}
-          </button>
-        </div>
       </div>
 
       <await name="networks" effect="fade-y-up">
@@ -40,6 +35,7 @@
           </div>
 
           <div class="row compact horiz items-center" v-for="(node, j) in network.nodes" :key="j">
+            <modal-cmd :name="`cmd_${node.$id}`" :node="node"/>
             <div class="col weight-1">
               <div class="panel compressed">
 
@@ -56,7 +52,7 @@
                         </strong>
                       </div>
                     </div>
-
+                    
                     <div class="col">
                       <await :name="`node_${node.$id}`" :spinnerScale="0.5"/>
                     </div>
@@ -163,6 +159,16 @@
                   </div>
 
                 </div>
+
+                <div class="panel-footer">
+                  <div class="horiz w-full">
+                    <div class="col">
+                      <button @click="listCommands(node)" class="primary">
+                        {{$t('view.dashboard.commands')}}
+                      </button>
+                    </div>                    
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -201,8 +207,20 @@
       Network.manageStateFromList(this.networks)
     }
 
-    async sendCommand() {
-      await new Node().sendShellScript('a')
+    async sendCommand(node: Node) {
+      const idCommand = await node.sendCommand(['apt-get install dialog apt-utils -y', 'apt-get -y install mysql-server'])
+
+      if (idCommand) {
+        this.$snotify.info(idCommand)
+        console.log(idCommand)
+        sleep(20000)
+        node.getCommandOutput(idCommand)
+      }
     }
+
+    async listCommands(node: Node) {
+      $.modal.open(`cmd_${node.$id}`)
+    }
+
   }
 </script>

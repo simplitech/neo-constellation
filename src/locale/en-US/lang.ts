@@ -64,6 +64,7 @@ export default {
       required: 'The field \'{0}\' is required',
       invalidEmail: 'The field \'{0}\' must be e-mail',
       invalidDate: 'The field \'{0}\' has not valid date',
+      invalidProtocol: 'Not a valid protocol',
       passwordLength: 'The password must have between {0} and {1} characters',
       samePassword: 'The fields password must match',
       invalidPassword: 'Invalid password',
@@ -92,6 +93,7 @@ export default {
       describeKeyPairs: 'Listing Key Pairs...',
       describeVpcs: 'Listing VPCs...',
       createSecurityGroup: 'Creating a Security Group...',
+      setSecurityGroupRules: 'Setting up Security Group access rules...',
       importKeyPair: 'Importing Key Pair...',
       createKeyPair: 'Creating a Key Pair...',
       getObject: 'Getting Bucket in S3...',
@@ -182,12 +184,16 @@ export default {
       title: 'Dashboard',
       createNode: 'Create Node',
       reloadList: 'Reload List',
-      sendCommand: 'Send Command',
+      commands: 'Commands',
     },
     persistNode: {
       title: 'Create Node',
       titleAlt: 'Edit Node',
       newNetwork: 'New Network',
+    },
+    cmd: {
+      title: 'Commands',
+      sendCommand: 'Send Command',
     },
   },
 
