@@ -148,7 +148,7 @@
   import {Getter, Action} from 'vuex-class'
   import Network from '@/model/Network'
   import Node from '@/model/Node'
-  import {$} from '@/simpli'
+  import {$, sleep} from '@/simpli'
 
   @Component
   export default class DashboardView extends Vue {
@@ -168,8 +168,16 @@
       await $.await.run(fetch, 'networks')
     }
 
-    async sendCommand() {
-      await new Node().sendShellScript('a')
+    async sendCommand(node: Node) {
+      const idCommand = await node.sendCommand(['apt-get install dialog apt-utils -y', 'apt-get -y install mysql-server'])
+
+      if (idCommand) {
+        this.$snotify.info(idCommand)
+        console.log(idCommand)
+        sleep(20000)
+        node.getCommandOutput(idCommand)
+      }
     }
+
   }
 </script>

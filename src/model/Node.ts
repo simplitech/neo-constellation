@@ -9,8 +9,8 @@ import {
 } from '@/simpli'
 
 import _ from 'lodash'
-import {EC2, S3, SSM, IAM} from 'aws-sdk'
-import {Instance, Tag} from 'aws-sdk/clients/ec2'
+import {EC2, S3, SSM, IAM, CloudWatchLogs as CWL} from 'aws-sdk'
+import {Instance, Reservation, Tag} from 'aws-sdk/clients/ec2'
 import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
@@ -29,6 +29,7 @@ export default class Node extends Model {
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
   static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
   static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+  static readonly DEFAULT_LOG_GROUP = 'command-log'
   static readonly DEFAULT_ASSUME_ROLE_POLICY = {
     Version: '2012-10-17',
     Statement: [
@@ -567,26 +568,57 @@ export default class Node extends Model {
     return null
   }
 
-  async sendShellScript(idInstance: string) {
+  async sendCommand(commands: string[]) {
+
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
     const payload = {
       DocumentName: 'AWS-RunShellScript',
-      InstanceIds: [idInstance],
+      CloudWatchOutputConfig: {
+        CloudWatchLogGroupName: 'command-log',
+        CloudWatchOutputEnabled: true,
+      },
+      InstanceIds: [idInstance!],
       Parameters: {
-        commands : ['yum install -y mysql'],
+        commands,
       },
     }
 
-    const data = await AwsGlobal.ssm.sendCommand(payload).promise()
+    AwsGlobal.switchRegion(region!)
 
-    if (data.Command && data.Command.Status === 'Success') {
-      const commandId = data.Command.CommandId
-      const listPayload = {
-        CommandId: commandId,
-        Details: true,
-      }
+    const ssm = new SSM()
 
-      await AwsGlobal.ssm.listCommandInvocations(listPayload).promise()
+    const data = await ssm.sendCommand(payload).promise()
+
+    if (data && data.Command) {
+      console.log(data.Command.CommandId)
+      return data.Command.CommandId
     }
+  }
+
+  async getCommandOutput(idCommand: string) {
+
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    const streamName = `${idCommand}/${idInstance!}/aws-runShellScript/stdout`
+
+    const payload = {
+      logGroupName: Node.DEFAULT_LOG_GROUP, /* required */
+      logStreamName: streamName, /* required */
+      startFromHead: true,
+    }
+
+    AwsGlobal.switchRegion(region!)
+
+    const cwl = new CWL()
+    const data = await cwl.getLogEvents(payload).promise()
+
+    console.log(data)
+
   }
 
   private async install() {
