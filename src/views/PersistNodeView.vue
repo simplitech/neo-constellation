@@ -84,8 +84,8 @@
         </await>
 
         <div class="panel-footer items-end">
-          <button type="button" class="basic" @click="back">{{$t('app.cancel')}}</button>
           <await name="form" spinner="BeatLoader">
+            <button type="button" class="basic" @click="back">{{$t('app.cancel')}}</button>
             <button type="submit" class="primary">{{$t('app.create')}}</button>
           </await>
         </div>

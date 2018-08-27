@@ -109,6 +109,10 @@
     .panel-title {
       margin: 0 0 0 16px;
     }
+
+    button, input[type=submit], .btn {
+      margin-bottom: 0;
+    }
   }
 
   > .panel-header {

@@ -9,7 +9,7 @@
           </router-link>
         </div>
         <div class="col">
-          <button @click="populateList">
+          <button @click="populate">
             {{$t('view.dashboard.reloadList')}}
           </button>
         </div>
@@ -57,22 +57,28 @@
                       </div>
                     </div>
 
-                    <div class="col weight-1" v-if="[80].includes(node.state)">
-                      <button @click="node.turnOn()" class="basic success">
-                        <i class="fa fa-play"></i>
-                        {{$t('app.turnOn')}}
-                      </button>
+                    <div class="col">
+                      <await :name="`node_${node.$id}`" :spinnerScale="0.5"/>
                     </div>
 
-                    <div class="col weight-1" v-else-if="[16].includes(node.state)">
-                      <button @click="node.turnOff()" class="basic warning">
-                        <i class="fa fa-pause"></i>
-                        {{$t('app.turnOff')}}
-                      </button>
+                    <div class="col weight-1">
+                      <template v-if="[80].includes(node.state)">
+                        <button @click="node.turnOn()" class="basic success">
+                          <i class="fa fa-play"></i>
+                          {{$t('app.turnOn')}}
+                        </button>
+                      </template>
+
+                      <template v-else-if="[16].includes(node.state)">
+                        <button @click="node.turnOff()" class="basic warning">
+                          <i class="fa fa-pause"></i>
+                          {{$t('app.turnOff')}}
+                        </button>
+                      </template>
                     </div>
 
                     <div class="col" v-if="[16, 80].includes(node.state)">
-                      <button class="basic danger">
+                      <button @click="node.terminate()" class="basic danger">
                         <i class="fa fa-remove"></i>
                         {{$t('app.terminate')}}
                       </button>
@@ -99,8 +105,8 @@
                         {{$t('classes.Node.columns.$id')}}
                       </div>
                       <span>
-                          {{node.idInstance}}
-                        </span>
+                        {{node.$id}}
+                      </span>
                     </div>
                   </div>
 
@@ -132,6 +138,31 @@
 
                 </div>
 
+                <div class="horiz">
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.size')}}
+                      </div>
+                      <span>
+                        {{node.size}}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.region')}}
+                      </div>
+                      <span>
+                        {{node.region}}
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
               </div>
             </div>
           </div>
@@ -148,7 +179,7 @@
   import {Getter, Action} from 'vuex-class'
   import Network from '@/model/Network'
   import Node from '@/model/Node'
-  import {$} from '@/simpli'
+  import {$, sleep} from '@/simpli'
 
   @Component
   export default class DashboardView extends Vue {
@@ -157,15 +188,17 @@
     networks: Network[] = []
 
     async mounted() {
-      await this.populateList()
+      await this.populate()
     }
 
-    async populateList() {
-      const fetch = async () => {
-        this.networks = await Network.list()
-      }
+    async populate() {
+      this.networks = await Network.list()
 
-      await $.await.run(fetch, 'networks')
+      // Waiting the next DOM render
+      await sleep(500)
+
+      // Verifies all the floating states and prepares them to the state
+      Network.manageStateFromList(this.networks)
     }
 
     async sendCommand() {
