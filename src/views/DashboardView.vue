@@ -9,13 +9,8 @@
           </router-link>
         </div>
         <div class="col">
-          <button @click="populateList">
+          <button @click="populate">
             {{$t('view.dashboard.reloadList')}}
-          </button>
-        </div>
-        <div class="col">
-          <button @click="sendCommand">
-            {{$t('view.dashboard.sendCommand')}}
           </button>
         </div>
       </div>
@@ -40,6 +35,7 @@
           </div>
 
           <div class="row compact horiz items-center" v-for="(node, j) in network.nodes" :key="j">
+            <modal-cmd :name="`cmd_${node.$id}`" :node="node"/>
             <div class="col weight-1">
               <div class="panel compressed">
 
@@ -56,23 +52,29 @@
                         </strong>
                       </div>
                     </div>
-
-                    <div class="col weight-1" v-if="[80].includes(node.state)">
-                      <button @click="node.turnOn()" class="basic success">
-                        <i class="fa fa-play"></i>
-                        {{$t('app.turnOn')}}
-                      </button>
+                    
+                    <div class="col">
+                      <await :name="`node_${node.$id}`" :spinnerScale="0.5"/>
                     </div>
 
-                    <div class="col weight-1" v-else-if="[16].includes(node.state)">
-                      <button @click="node.turnOff()" class="basic warning">
-                        <i class="fa fa-pause"></i>
-                        {{$t('app.turnOff')}}
-                      </button>
+                    <div class="col weight-1">
+                      <template v-if="[80].includes(node.state)">
+                        <button @click="node.turnOn()" class="basic success">
+                          <i class="fa fa-play"></i>
+                          {{$t('app.turnOn')}}
+                        </button>
+                      </template>
+
+                      <template v-else-if="[16].includes(node.state)">
+                        <button @click="node.turnOff()" class="basic warning">
+                          <i class="fa fa-pause"></i>
+                          {{$t('app.turnOff')}}
+                        </button>
+                      </template>
                     </div>
 
                     <div class="col" v-if="[16, 80].includes(node.state)">
-                      <button class="basic danger">
+                      <button @click="node.terminate()" class="basic danger">
                         <i class="fa fa-remove"></i>
                         {{$t('app.terminate')}}
                       </button>
@@ -99,8 +101,8 @@
                         {{$t('classes.Node.columns.$id')}}
                       </div>
                       <span>
-                          {{node.idInstance}}
-                        </span>
+                        {{node.$id}}
+                      </span>
                     </div>
                   </div>
 
@@ -132,6 +134,41 @@
 
                 </div>
 
+                <div class="horiz">
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.size')}}
+                      </div>
+                      <span>
+                        {{node.size}}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.region')}}
+                      </div>
+                      <span>
+                        {{node.region}}
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div class="panel-footer">
+                  <div class="horiz w-full">
+                    <div class="col">
+                      <button @click="listCommands(node)" class="primary">
+                        {{$t('view.dashboard.commands')}}
+                      </button>
+                    </div>                    
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -157,15 +194,17 @@
     networks: Network[] = []
 
     async mounted() {
-      await this.populateList()
+      await this.populate()
     }
 
-    async populateList() {
-      const fetch = async () => {
-        this.networks = await Network.list()
-      }
+    async populate() {
+      this.networks = await Network.list()
 
-      await $.await.run(fetch, 'networks')
+      // Waiting the next DOM render
+      await sleep(500)
+
+      // Verifies all the floating states and prepares them to the state
+      Network.manageStateFromList(this.networks)
     }
 
     async sendCommand(node: Node) {
@@ -177,6 +216,10 @@
         sleep(20000)
         node.getCommandOutput(idCommand)
       }
+    }
+
+    async listCommands(node: Node) {
+      $.modal.open(`cmd_${node.$id}`)
     }
 
   }

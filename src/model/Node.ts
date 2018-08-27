@@ -11,6 +11,7 @@ import {
 import _ from 'lodash'
 import {EC2, S3, SSM, IAM, CloudWatchLogs as CWL} from 'aws-sdk'
 import {Instance, Reservation, Tag} from 'aws-sdk/clients/ec2'
+import {OutputLogEvent} from 'aws-sdk/clients/cloudwatchlogs'
 import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
@@ -41,6 +42,10 @@ export default class Node extends Model {
         Effect: 'Allow',
       },
     ],
+  }
+
+  static bucketName() {
+    return _.lowerCase(accessKeyId()).replace(/ /g, '')
   }
 
   /**
@@ -87,7 +92,7 @@ export default class Node extends Model {
 
     // Scan all responses
     const responses = await Promise.all(promises)
-    for (const resp of responses) {
+    for (const [index, resp] of responses.entries()) {
       if (resp.Reservations) {
         const nodes: Node[] = []
 
@@ -97,6 +102,7 @@ export default class Node extends Model {
 
           if (instance) {
             const node = new Node()
+            node.region = listRegion[index]
             node.get(instance)
             nodes.push(node)
           }
@@ -110,6 +116,14 @@ export default class Node extends Model {
       .flatten()
       .uniqBy('idInstance')
       .value() as Node[]
+  }
+
+  get $id() {
+    return this.idInstance
+  }
+
+  set $id(val: string | null) {
+    this.idInstance = val
   }
 
   // Instance ID
@@ -146,6 +160,8 @@ export default class Node extends Model {
     return `network-${this.idNetwork}-sg`
   }
 
+  private ec2: EC2 = new EC2()
+
   /**
    * Node constructor
    * @param {Region} region
@@ -153,6 +169,11 @@ export default class Node extends Model {
   constructor(region = AwsGlobal.DEFAULT_REGION) {
     super()
     if (region) this.region = region
+  }
+
+  switchRegion() {
+    if (this.region) AwsGlobal.switchRegion(this.region)
+    this.ec2 = new EC2()
   }
 
   /**
@@ -174,6 +195,7 @@ export default class Node extends Model {
     if (idNetworkTag) this.idNetwork = idNetworkTag.Value as string
     this.idInstance = instance.InstanceId || null
     this.idImage = instance.ImageId || null
+    this.size = instance.InstanceType as Size || null
     this.state = instance.State && instance.State.Code || null
     this.keyPair = instance.KeyName || null
 
@@ -188,23 +210,18 @@ export default class Node extends Model {
    * @returns {Promise<void>}
    */
   async create() {
-    const {switchRegion} = AwsGlobal
-    const {idNetwork, region} = this
 
-    if (!region) abort('system.error.fieldNotDefined')
-    if (!idNetwork) this.idNetwork = shortid.generate()
-
-    switchRegion(this.region!)
-    AwsGlobal.ec2 = new EC2()
-
+    if (!this.idNetwork) this.idNetwork = shortid.generate()
     const {groupName} = this
 
     await this.populateIdImage()
 
     // Get or Create
-    this.idSecurityGroup =
-      await this.getSecurityGroupByName(groupName) ||
-      await this.createSecurityGroup(groupName)
+    this.idSecurityGroup = await this.getSecurityGroupByName(groupName)
+    if (!this.idSecurityGroup) {
+      this.idSecurityGroup = await this.createSecurityGroup(groupName)
+      await this.setDefaultGroupRules()
+    }
 
     // Get or Create
     this.keyPair =
@@ -224,37 +241,24 @@ export default class Node extends Model {
    * @returns {Promise<void>}
    */
   async turnOn() {
-    const {switchRegion} = AwsGlobal
-    const {idInstance, region} = this
+    this.switchRegion()
+    const {ec2, idInstance} = this
 
     if (!idInstance) abort('system.error.fieldNotDefined')
-    if (!region) abort('system.error.fieldNotDefined')
-
-    switchRegion(this.region!)
-    const ec2 = new EC2()
 
     const payload = {
       InstanceIds: [idInstance!],
     }
 
-    const waitPayload = {
-      Filters: [
-        {
-          Name: 'instance-id',
-          Values: [idInstance!],
-        },
-      ],
-    }
-
     $.snotify.info(idInstance, $.t('log.node.startInstances'))
-    await ec2.startInstances(payload).promise()
-
     this.state = State.PENDING
 
-    await ec2.waitFor('instanceRunning', waitPayload).promise()
-    $.snotify.info(idInstance, $.t('log.node.startedInstances'))
+    const fetch = async () => {
+      await ec2.startInstances(payload).promise()
+      await this.manageState()
+    }
 
-    this.state = State.RUNNING
+    await $.await.run(fetch, `node_${this.$id}`)
   }
 
   /**
@@ -262,20 +266,58 @@ export default class Node extends Model {
    * @returns {Promise<void>}
    */
   async turnOff() {
-    const {switchRegion} = AwsGlobal
-    const {idInstance, region} = this
+    this.switchRegion()
+    const {ec2, idInstance} = this
 
     if (!idInstance) abort('system.error.fieldNotDefined')
-    if (!region) abort('system.error.fieldNotDefined')
-
-    switchRegion(this.region!)
-    const ec2 = new EC2()
 
     const payload = {
       InstanceIds: [idInstance!],
     }
 
-    const waitPayload = {
+    $.snotify.info(idInstance, $.t('log.node.stopInstances'))
+    this.state = State.STOPPING
+
+    const fetch = async () => {
+      await ec2.stopInstances(payload).promise()
+      await this.manageState()
+    }
+
+    await $.await.run(fetch, `node_${this.$id}`)
+  }
+
+  /**
+   * Terminate a EC2 instance
+   * @returns {Promise<void>}
+   */
+  async terminate() {
+    this.switchRegion()
+    const {ec2, idInstance} = this
+
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    const payload = {
+      InstanceIds: [idInstance!],
+    }
+
+    $.snotify.info(idInstance, $.t('log.node.terminateInstances'))
+    this.state = State.SHUTTING_DOWN
+
+    const fetch = async () => {
+      await ec2.terminateInstances(payload).promise()
+      await this.manageState()
+    }
+
+    await $.await.run(fetch, `node_${this.$id}`)
+  }
+
+  async manageState() {
+    this.switchRegion()
+    const {ec2, idInstance, state} = this
+
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    const payload = {
       Filters: [
         {
           Name: 'instance-id',
@@ -284,18 +326,30 @@ export default class Node extends Model {
       ],
     }
 
-    $.snotify.info(idInstance, $.t('log.node.stopInstances'))
-    await ec2.stopInstances(payload).promise()
+    if (state === null || state === State.PENDING) {
+      await ec2.waitFor('instanceRunning', payload).promise()
 
-    this.state = State.STOPPING
+      $.snotify.info(idInstance, $.t('log.node.startedInstances'))
 
-    await ec2.waitFor('instanceStopped', waitPayload).promise()
-    $.snotify.info(idInstance, $.t('log.node.stoppedInstances'))
+      this.state = State.RUNNING
+    } else if (state === State.STOPPING) {
+      await ec2.waitFor('instanceStopped', payload).promise()
 
-    this.state = State.STOPPED
+      $.snotify.info(idInstance, $.t('log.node.stoppedInstances'))
+
+      this.state = State.STOPPED
+    } else if (state === State.SHUTTING_DOWN) {
+      await ec2.waitFor('instanceTerminated', payload).promise()
+
+      $.snotify.info(idInstance, $.t('log.node.terminatedInstances'))
+
+      this.state = State.TERMINATED
+    }
   }
 
   async populateIdImage() {
+    this.switchRegion()
+
     const payload = {
       Filters: [
         {
@@ -306,12 +360,14 @@ export default class Node extends Model {
     }
 
     info('log.node.describeImages')
-    const data = await AwsGlobal.ec2.describeImages(payload).promise()
+    const data = await this.ec2.describeImages(payload).promise()
 
     if (data.Images && data.Images[0]) this.idImage = data.Images[0].ImageId || null
   }
 
   async getSecurityGroupByName(name: string) {
+    this.switchRegion()
+
     const payload = {
       Filters: [
         {
@@ -322,14 +378,16 @@ export default class Node extends Model {
     }
 
     info('log.node.describeSecurityGroups')
-    const data = await AwsGlobal.ec2.describeSecurityGroups(payload).promise()
+    const data = await this.ec2.describeSecurityGroups(payload).promise()
 
-    if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId
+    if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId || null
 
     return null
   }
 
   async getKeyPair(name: string) {
+    this.switchRegion()
+
     const payload = {
       Filters: [
         {
@@ -340,7 +398,7 @@ export default class Node extends Model {
     }
 
     info('log.node.describeKeyPairs')
-    const data = await AwsGlobal.ec2.describeKeyPairs(payload).promise()
+    const data = await this.ec2.describeKeyPairs(payload).promise()
 
     if (data.KeyPairs && data.KeyPairs[0]) return data.KeyPairs[0].KeyName
 
@@ -348,6 +406,7 @@ export default class Node extends Model {
   }
 
   async getDefaultVpc() {
+    this.switchRegion()
 
     const payload = {
       Filters: [
@@ -359,7 +418,7 @@ export default class Node extends Model {
     }
 
     info('log.node.describeVpcs')
-    const data = await AwsGlobal.ec2.describeVpcs(payload).promise()
+    const data = await this.ec2.describeVpcs(payload).promise()
 
     if (data.Vpcs && data.Vpcs[0]) return data.Vpcs[0].VpcId
   }
@@ -374,15 +433,15 @@ export default class Node extends Model {
     }
 
     info('log.node.createSecurityGroup')
-    const data = await AwsGlobal.ec2.createSecurityGroup(payload).promise()
+    const data = await this.ec2.createSecurityGroup(payload).promise()
 
     return data.GroupId || null
   }
 
   async createKeyPair(name: string) {
-    const {ec2} = AwsGlobal
+    this.switchRegion()
 
-    const privateKey = await this.getObject(`${name}.pem`, `neo-bucket-${accessKeyId()}`)
+    const privateKey = await this.getObject(`${name}.pem`, Node.bucketName())
 
     if (privateKey) {
       const publicKey = new RSA(privateKey).exportKey('public').slice(27, -25)
@@ -393,19 +452,19 @@ export default class Node extends Model {
       }
 
       info('log.node.importKeyPair')
-      await ec2.importKeyPair(importParams).promise()
+      await this.ec2.importKeyPair(importParams).promise()
     } else {
       const payload = {
         KeyName: name,
       }
 
       info('log.node.createKeyPair')
-      const data = await ec2.createKeyPair(payload).promise()
+      const data = await this.ec2.createKeyPair(payload).promise()
 
-      await this.createBucket(`neo-bucket-${accessKeyId()}`)
+      await this.createBucket(Node.bucketName())
 
       const body = data.KeyMaterial
-      if (body) await this.putObject(`${name}.pem`, body, `neo-bucket-${accessKeyId()}`)
+      if (body) await this.putObject(`${name}.pem`, body, Node.bucketName())
     }
 
     return name
@@ -428,6 +487,7 @@ export default class Node extends Model {
       }
     } catch (error) {
       if (error.code === 'NoSuchBucket' || error.code === 'NoSuchKey') return
+      console.log(error)
       throw error
     }
   }
@@ -453,7 +513,12 @@ export default class Node extends Model {
     const s3 = new S3()
 
     info('log.node.createBucket')
-    return await s3.createBucket(payload).promise()
+    try {
+      const data = await s3.createBucket(payload).promise()
+      return data
+    } catch (e) {
+      console.log(e)
+    }
   }
 
   async getInstanceProfile(name: string) {
@@ -541,6 +606,8 @@ export default class Node extends Model {
   }
 
   async attachInstanceProfile(idInstance: string, instanceProfileName: string) {
+    this.switchRegion()
+
     const payload = {
       IamInstanceProfile: {
         Name: instanceProfileName,
@@ -560,10 +627,10 @@ export default class Node extends Model {
     // Newly created instances start on a 'pending' status.
     // Must wait for 'running'
     info('log.node.waitFor')
-    await AwsGlobal.ec2.waitFor('instanceRunning', waitPayload).promise()
+    await this.ec2.waitFor('instanceRunning', waitPayload).promise()
     info('log.node.instanceRunning')
 
-    const data = await AwsGlobal.ec2.associateIamInstanceProfile(payload).promise()
+    const data = await this.ec2.associateIamInstanceProfile(payload).promise()
     if (data.IamInstanceProfileAssociation) return data.IamInstanceProfileAssociation.State
     return null
   }
@@ -598,6 +665,27 @@ export default class Node extends Model {
     }
   }
 
+  async listCommands() {
+
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    this.switchRegion()
+
+    const payload = {
+      InstanceId: idInstance!,
+    }
+
+    AwsGlobal.switchRegion(region!)
+
+    const ssm = new SSM()
+
+    const data = await ssm.listCommands(payload).promise()
+    return data.Commands
+
+  }
+
   async getCommandOutput(idCommand: string) {
 
     const {region, idInstance} = this
@@ -616,12 +704,57 @@ export default class Node extends Model {
 
     const cwl = new CWL()
     const data = await cwl.getLogEvents(payload).promise()
+    let output
+    if (data && data.events) {
+      output = data.events.map( (event) => (event.message as string).split(/(?:\n|\r)/g))
+      return _.flattenDeep(output)
+    }
+    return []
 
-    console.log(data)
+  }
+  async setSecurityGroupInboundRule(protocol: string, port: {from: number, to: number} | number) {
+    this.switchRegion()
+
+    const {idSecurityGroup} = this
+
+    if (!idSecurityGroup) abort('system.error.fieldNotDefined')
+    if (protocol !== 'tcp' && 'udp') abort('system.error.invalidProtocol')
+
+    if (typeof port === 'number') {
+      port = {from: port, to: port}
+    }
+
+    const payload = {
+      GroupId: idSecurityGroup!,
+      IpPermissions: [
+        {
+          FromPort: port.from,
+          IpProtocol: protocol,
+          IpRanges: [
+            {
+            CidrIp: '0.0.0.0/0',
+            },
+          ],
+          ToPort: port.to,
+        },
+      ],
+    }
+
+    const data = await this.ec2.authorizeSecurityGroupIngress(payload).promise()
 
   }
 
+  private async setDefaultGroupRules() {
+    info('log.node.setSecurityGroupRules')
+    await this.setSecurityGroupInboundRule('tcp', 22)
+    await this.setSecurityGroupInboundRule('tcp', 20332)
+    await this.setSecurityGroupInboundRule('tcp', 20333)
+    await this.setSecurityGroupInboundRule('tcp', 20334)
+  }
+
   private async install() {
+    this.switchRegion()
+
     const {name, idNetwork, idSecurityGroup, idImage, availabilityZone, size, keyPair} = this
 
     if (!name) abort('system.error.fieldNotDefined')
@@ -667,7 +800,7 @@ export default class Node extends Model {
     }
 
     info('log.node.runInstances')
-    const data = await AwsGlobal.ec2.runInstances(payload).promise()
+    const data = await this.ec2.runInstances(payload).promise()
 
     if (data.Instances && data.Instances[0]) this.idInstance = data.Instances[0].InstanceId || null
 
