@@ -56,11 +56,13 @@
   @Component
   export default class LoginView extends Vue {
     @Action('auth/signIn') signIn?: Function
+    @Action('auth/init') init?: Function
     @Getter('auth/isLogged') isLogged?: string
 
     model = new Authentication()
 
     created() {
+      this.init!()
       if (this.isLogged!) pushByName('dashboard')
     }
   }

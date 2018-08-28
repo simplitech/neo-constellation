@@ -65,6 +65,7 @@ export default {
       invalidEmail: 'The field \'{0}\' must be e-mail',
       invalidDate: 'The field \'{0}\' has not valid date',
       invalidProtocol: 'Not a valid protocol',
+      networkNotEmpty: 'Network is not empty',
       passwordLength: 'The password must have between {0} and {1} characters',
       samePassword: 'The fields password must match',
       invalidPassword: 'Invalid password',

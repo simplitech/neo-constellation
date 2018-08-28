@@ -92,18 +92,29 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    */
   auth: async ({dispatch, commit, getters, state}) => {
+    dispatch('init')
+    const {isLogged} = getters
+
+    if (isLogged) {
+      state.eventListener.auth.forEach((item) => item())
+    } else {
+      commit(types.SET_UNAUTHENTICATED_PATH, $.route.path)
+      dispatch('signOut', true)
+    }
+  },
+
+  /**
+   * Initializes the module
+   * @param commit
+   * @param getters
+   */
+  init: async ({commit, getters}) => {
     commit(types.POPULATE)
     const {isLogged, accessKeyId, secretAccessKey} = getters
 
     if (isLogged) {
       AWS.config.update({accessKeyId, secretAccessKey})
-
       AwsGlobal.ec2 = new EC2()
-
-      state.eventListener.auth.forEach((item) => item())
-    } else {
-      commit(types.SET_UNAUTHENTICATED_PATH, $.route.path)
-      dispatch('signOut', true)
     }
   },
 

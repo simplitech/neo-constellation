@@ -17,6 +17,7 @@ import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
 import {State} from '@/enum/State'
 import AwsGlobal from '@/model/AwsGlobal'
+import Network from '@/model/Network'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -63,6 +64,10 @@ export default class Node extends Model {
           Name: `tag:${Node.DEFAULT_NETWORK_TAG}`,
           Values: ['*'],
         },
+        {
+          Name: 'instance-state-code',
+          Values: ['0', '16', '32', '64', '80'],
+        },
       ],
     }
 
@@ -72,6 +77,10 @@ export default class Node extends Model {
           {
             Name: `tag:${Node.DEFAULT_NETWORK_TAG}`,
             Values: [idNetwork],
+          },
+          {
+            Name: 'instance-state-code',
+            Values: ['0', '16', '32', '64', '80'],
           },
         ],
       }
@@ -303,12 +312,41 @@ export default class Node extends Model {
     $.snotify.info(idInstance, $.t('log.node.terminateInstances'))
     this.state = State.SHUTTING_DOWN
 
+    // async check network and destroy (without await)?
+    this.deleteNetworkIfEmpty()
+
     const fetch = async () => {
       await ec2.terminateInstances(payload).promise()
       await this.manageState()
     }
 
     await $.await.run(fetch, `node_${this.$id}`)
+  }
+
+  async deleteNetworkIfEmpty() {
+
+    const {ec2, idInstance, idNetwork} = this
+    if (!idInstance) abort('system.error.fieldNotDefined')
+    if (!idNetwork) abort('system.error.fieldNotDefined')
+
+    // async check network and destroy
+    const payload = {
+      Filters: [
+        {
+          Name: 'instance-id',
+          Values: [idInstance!],
+        },
+      ],
+    }
+
+    await ec2.waitFor('instanceTerminated', payload).promise()
+
+    const network = new Network()
+    await network.get(idNetwork!)
+
+    if (!network.nodes || network.nodes.length <= 0) {
+      await network.destroy()
+    }
   }
 
   async manageState() {
