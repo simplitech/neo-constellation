@@ -159,6 +159,33 @@
                   </div>
 
                 </div>
+                
+                <div class="horiz" v-if="[16].includes(node.state)">
+
+                  <div class="col weight-1">
+                    <div class="label">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.ipv4')}}
+                      </div>
+                      <span>
+                        {{node.ipv4}}
+                      </span>
+                    </div>
+                  </div>
+               </div>
+                <div class="horiz" v-if="[16].includes(node.state)">
+                  <div class="col weight-1">
+                    <div class="label truncate">
+                      <div class="label-prefix">
+                        {{$t('classes.Node.columns.publicdns')}}
+                      </div>
+                      <span>
+                        {{node.publicDns}}
+                      </span>
+                    </div>
+                  </div>
+
+                </div>
 
                 <div class="panel-footer">
                   <div class="horiz w-full">

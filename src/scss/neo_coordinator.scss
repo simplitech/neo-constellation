@@ -5,6 +5,10 @@
   @extend .pal-white-69.text;
 }
 
+.text-danger {
+  @extend .pal-raspberry.text;
+}
+
 .label {
   @extend .pal-purple-4c.bg;
   @extend .pal-white-30.border;
@@ -18,6 +22,7 @@
 
   &.primary {
     @extend .pal-purple-67.bg;
+    @extend .pal-white-50.text;
 
     .label-prefix, .label-postfix {
       @extend .pal-purple-67.bg.lighten;

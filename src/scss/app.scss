@@ -44,6 +44,10 @@
   transform: translateX(100vw);
 }
 
+* {
+  box-sizing: border-box;
+}
+
 html {
   @extend .pal-purple-67.bg;
   @extend .font-open-sans;
@@ -56,6 +60,10 @@ body {
   min-height: 100vh;
   margin: 0;
   background: linear-gradient(135deg, #b37ee8 0%, #7b20ca 51%, #390c72 100%);
+}
+
+header, header * {
+  box-sizing: initial;
 }
 
 nav {
@@ -424,7 +432,7 @@ input:not([type=submit]):not([type=checkbox]):not([type=radio]), select, textare
   }
 
   background: none;
-  width: auto;
+  width: 100%;
   height: 32px;
   border-top: none;
   border-left: none;

@@ -16,8 +16,10 @@ import {Size} from '@/enum/Size'
 import {Region} from '@/enum/Region'
 import {Zone} from '@/enum/Zone'
 import {State} from '@/enum/State'
+import {Stream} from '@/enum/Stream'
 import AwsGlobal from '@/model/AwsGlobal'
 import Network from '@/model/Network'
+import StreamEvent from '@/model/StreamEvent'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -165,6 +167,10 @@ export default class Node extends Model {
 
   instanceProfile: string | null = null
 
+  ipv4: string | null = null
+
+  publicDns: string | null = null
+
   get groupName() {
     return `network-${this.idNetwork}-sg`
   }
@@ -207,6 +213,8 @@ export default class Node extends Model {
     this.size = instance.InstanceType as Size || null
     this.state = instance.State && instance.State.Code || null
     this.keyPair = instance.KeyName || null
+    this.ipv4 = instance.PublicIpAddress || null
+    this.publicDns = instance.PublicDnsName || null
 
     // TODO: replace to Regex match (/network-\n*-sg/g)
     if (instance.SecurityGroups && instance.SecurityGroups[0]) {
@@ -730,26 +738,19 @@ export default class Node extends Model {
     if (!region) abort('system.error.fieldNotDefined')
     if (!idInstance) abort('system.error.fieldNotDefined')
 
-    const streamName = `${idCommand}/${idInstance!}/aws-runShellScript/stdout`
+    const outData = this.getStreamLog(idCommand, Stream.OUT)
+    const errData = this.getStreamLog(idCommand, Stream.ERR)
 
-    const payload = {
-      logGroupName: Node.DEFAULT_LOG_GROUP, /* required */
-      logStreamName: streamName, /* required */
-      startFromHead: true,
-    }
+    const values = await Promise.all([outData, errData])
 
-    AwsGlobal.switchRegion(region!)
+    const stdout = values[0] || []
+    const stderr = values[1] || []
 
-    const cwl = new CWL()
-    const data = await cwl.getLogEvents(payload).promise()
-    let output
-    if (data && data.events) {
-      output = data.events.map( (event) => (event.message as string).split(/(?:\n|\r)/g))
-      return _.flattenDeep(output)
-    }
-    return []
+    const log = stdout.concat(stderr).sort((a, b) => a.timestamp! - b.timestamp!)
 
+    return log as StreamEvent[]
   }
+
   async setSecurityGroupInboundRule(protocol: string, port: {from: number, to: number} | number) {
     this.switchRegion()
 
@@ -847,6 +848,54 @@ export default class Node extends Model {
       await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
       info('log.node.instanceCreated')
     }
+  }
+
+  private async getStreamLog(idCommand: string, stream: Stream) {
+    const { idInstance, region } = this
+    if (!idInstance) abort('system.error.fieldNotDefined')
+    if (!region) abort('system.error.fieldNotDefined')
+
+    const streamLog: StreamEvent[] = []
+    let streamPath: string = ''
+
+    switch (stream) {
+      case Stream.OUT:
+        streamPath = `${idCommand}/${idInstance!}/aws-runShellScript/stdout`
+        break
+      case Stream.ERR:
+        streamPath = `${idCommand}/${idInstance!}/aws-runShellScript/stderr`
+        break
+    }
+
+    const payload = {
+      logGroupName: Node.DEFAULT_LOG_GROUP, /* required */
+      logStreamName: streamPath, /* required */
+      startFromHead: true,
+    }
+    try {
+      AwsGlobal.switchRegion(region!)
+      const cwl = new CWL()
+
+      const data = await cwl.getLogEvents(payload).promise()
+
+      if (data && data.events) {
+
+        for (const rawEvent of data.events) {
+          const formattedEvent = new StreamEvent()
+
+          formattedEvent.timestamp = rawEvent.timestamp!
+          formattedEvent.message = (rawEvent.message as string).split(/(?:\n|\r)/g)
+          formattedEvent.stream = stream
+
+          streamLog.push(formattedEvent)
+        }
+      }
+    } catch (error) {
+      console.log(error)
+      if (error.code !== 'ResourceNotFoundException') throw error
+    }
+
+    return streamLog as StreamEvent[]
   }
 
 }

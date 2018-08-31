@@ -221,6 +221,8 @@ export default {
         keyPair: 'Key Pair',
         instanceProfile: 'Instace Profile',
         groupName: 'Group Name',
+        ipv4: 'IPv4 Public IP',
+        publicdns: 'Public DNS (IPv4)',
       },
       state: {
         null: 'Pending',
