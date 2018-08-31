@@ -173,7 +173,12 @@ export default class Node extends Model {
 
   publicDns: string | null = null
 
-  initialScript: string | null = ''
+  initialScript: string | null =
+  'sudo yum -y install docker\n'
++ 'sudo service docker start\n'
++ 'sudo docker run --rm -d --name neo-privatenet '
++ '-p 20333-20336:20333-20336/tcp '
++ '-p 30333-30336:30333-30336/tcp cityofzion/neo-privatenet'
 
   get userData() {
     return btoa(`#!/bin/bash\n${this.initialScript}`)
@@ -794,11 +799,10 @@ export default class Node extends Model {
   private async setDefaultGroupRules() {
     info('log.node.setSecurityGroupRules')
     await this.setSecurityGroupInboundRule('tcp', 22)
-    await this.setSecurityGroupInboundRule('tcp', 20332)
-    await this.setSecurityGroupInboundRule('tcp', 20333)
-    await this.setSecurityGroupInboundRule('tcp', 20334)
     await this.setSecurityGroupInboundRule('tcp', 443)
     await this.setSecurityGroupInboundRule('tcp', 80)
+    await this.setSecurityGroupInboundRule('tcp', {from: 20333, to: 20336})
+    await this.setSecurityGroupInboundRule('tcp', {from: 30333, to: 30336})
   }
 
   private async install() {
