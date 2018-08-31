@@ -290,6 +290,10 @@ form {
   }
 }
 
+textarea {
+  min-height: 150px,
+}
+
 button, input[type=submit], .btn {
   @extend .font-open-sans;
   @extend .f-600;

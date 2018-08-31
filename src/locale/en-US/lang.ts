@@ -194,6 +194,7 @@ export default {
     },
     cmd: {
       title: 'Commands',
+      command: 'Run new command:',
       sendCommand: 'Send Command',
     },
   },
@@ -223,6 +224,7 @@ export default {
         groupName: 'Group Name',
         ipv4: 'IPv4 Public IP',
         publicdns: 'Public DNS (IPv4)',
+        initialScript: 'Initial Script',
       },
       state: {
         null: 'Pending',

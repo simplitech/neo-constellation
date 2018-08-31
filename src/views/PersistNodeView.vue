@@ -81,6 +81,15 @@
               </await>
             </div>
           </div>
+
+          <div class="row horiz">
+            <div class="col weight-1">
+              <textarea-group type="text" v-model="model.initialScript">
+                {{ $t('classes.Node.columns.initialScript') }}
+              </textarea-group>
+            </div>
+          </div>
+
         </await>
 
         <div class="panel-footer items-end">

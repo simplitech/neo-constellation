@@ -28,8 +28,10 @@ const shortid = require('shortid')
 export default class Node extends Model {
 
   static readonly DEFAULT_KEY_NAME = 'NeoNode'
-  static readonly DEFAULT_DEVICE_NAME = '/dev/sda1'
+  static readonly DEFAULT_DEVICE_NAME = '/dev/xdva'
+  static readonly DEFAULT_DEVICE_SNAPSHOT_ID = 'snap-05d1e6c7ad7b5f068'
   static readonly DEFAULT_RESOURCE_TYPE = 'instance'
+  static readonly DEFAULT_AMI_NAME = 'amzn-ami-hvm-2018.03.0.20180811-x86_64-gp2'
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
   static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
   static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
@@ -170,6 +172,12 @@ export default class Node extends Model {
   ipv4: string | null = null
 
   publicDns: string | null = null
+
+  initialScript: string | null = ''
+
+  get userData() {
+    return btoa(`#!/bin/bash\n${this.initialScript}`)
+  }
 
   get groupName() {
     return `network-${this.idNetwork}-sg`
@@ -400,7 +408,7 @@ export default class Node extends Model {
       Filters: [
         {
           Name: 'name',
-          Values: ['ubuntu-bionic-18.04-amd64-server-20180522-dotnetcore-2018.07.11'],
+          Values: [Node.DEFAULT_AMI_NAME],
         },
       ],
     }
@@ -789,12 +797,14 @@ export default class Node extends Model {
     await this.setSecurityGroupInboundRule('tcp', 20332)
     await this.setSecurityGroupInboundRule('tcp', 20333)
     await this.setSecurityGroupInboundRule('tcp', 20334)
+    await this.setSecurityGroupInboundRule('tcp', 443)
+    await this.setSecurityGroupInboundRule('tcp', 80)
   }
 
   private async install() {
     this.switchRegion()
 
-    const {name, idNetwork, idSecurityGroup, idImage, availabilityZone, size, keyPair} = this
+    const {name, idNetwork, idSecurityGroup, idImage, availabilityZone, size, keyPair, userData} = this
 
     if (!name) abort('system.error.fieldNotDefined')
     if (!idNetwork) abort('system.error.fieldNotDefined')
@@ -804,14 +814,6 @@ export default class Node extends Model {
     if (!keyPair) abort('system.error.fieldNotDefined')
 
     const payload = {
-      BlockDeviceMappings: [
-        {
-          DeviceName: Node.DEFAULT_DEVICE_NAME,
-          Ebs: {
-            DeleteOnTermination: true,
-          },
-        },
-      ],
       ImageId: idImage!,
       InstanceType: size!,
       KeyName: keyPair!,
@@ -836,6 +838,7 @@ export default class Node extends Model {
           ],
         },
       ],
+      UserData: userData,
     }
 
     info('log.node.runInstances')

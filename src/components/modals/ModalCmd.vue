@@ -1,5 +1,5 @@
 <template>
-    <modal :name="name" @close="clearLog()">
+    <modal :name="name" @close="clearAndPopulate()">
         <div class="verti">
             <div v-for="(command, i) in commands" :key="i">
                 <button @click="populateLog(command)" class="primary weight-full">
@@ -24,8 +24,10 @@
                     </div>
                 </div>
             </div>
-            <div class="horiz">
-                <input-group @click="clearLog()" class="weight-1" type="text" v-model="input"/>
+            <div v-if="show">
+                <textarea-group type="text" v-model="input">
+                    {{$t('view.cmd.command')}}
+                </textarea-group>
                 <button @click="sendCommand()" class="primary">
                     {{$t('view.cmd.sendCommand')}}
                 </button>
@@ -48,13 +50,9 @@ export default class ModalCmd extends Vue {
     commands: string[] = []
     log: StreamEvent[] = []
     input: string = ''
+    show: boolean = true
 
     async mounted() {
-        await this.populateCommands()
-    }
-
-    async open() {
-        this.log = []
         await this.populateCommands()
     }
 
@@ -71,6 +69,7 @@ export default class ModalCmd extends Vue {
     }
 
     async populateLog(idCommand: string) {
+        this.show = false
         this.log = await this.node!.getCommandOutput(idCommand)
     }
 
@@ -81,8 +80,10 @@ export default class ModalCmd extends Vue {
         $.modal.close(this.name)
     }
 
-    async clearLog() {
+    async clearAndPopulate() {
         this.log = []
+        this.show = true
+        await this.populateCommands()
     }
 }
 </script>
