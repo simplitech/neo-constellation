@@ -161,7 +161,6 @@
                 </div>
                 
                 <div class="horiz" v-if="[16].includes(node.state)">
-
                   <div class="col weight-1">
                     <div class="label">
                       <div class="label-prefix">
@@ -173,6 +172,7 @@
                     </div>
                   </div>
                </div>
+
                 <div class="horiz" v-if="[16].includes(node.state)">
                   <div class="col weight-1">
                     <div class="label truncate">
@@ -184,14 +184,54 @@
                       </span>
                     </div>
                   </div>
-
                 </div>
+              
+                <div class="verti panel" v-if="node.containers.length">
+                  <div class="panel-header">
+                    <div class="panel-title">
+                      {{$t('view.dashboard.containers')}}
+                    </div>
+                  </div>
+                  <div class="horiz items-space-around">
+                    <div class="col weight-2">
+                      <div class="label">
+                        {{$t('classes.Container.columns.names')}}
+                      </div>
+                    </div>
+                    <div class="col weight-1">
+                      <div class="label">
+                        {{$t('classes.Container.columns.$id')}}
+                      </div>
+                    </div>
+                    <div class="col weight-1">
+                      <div class="label">
+                        {{$t('classes.Container.columns.ports')}}
+                      </div>
+                    </div>
+                  </div>
+                  <div class=" horiz items-space-around" v-for="(container, k) in node.containers" :key="k">
+                    <div class="col weight-2">
+                      {{container.names}}
+                    </div>
+                    <div class="col weight-1">
+                      {{container.id}}
+                    </div>
+                    <div class="col weight-1">
+                      {{container.ports}}
+                    </div>
+                  </div>
+               </div>
 
                 <div class="panel-footer">
                   <div class="horiz w-full">
                     <div class="col">
                       <button @click="listCommands(node)" class="primary">
                         {{$t('view.dashboard.commands')}}
+                      </button>
+                    </div>
+                    <div class="col">
+                      <button @click="test(node)" class="primary">
+                        Test
                       </button>
                     </div>                    
                   </div>
@@ -212,6 +252,7 @@
   import {Getter, Action} from 'vuex-class'
   import Network from '@/model/Network'
   import Node from '@/model/Node'
+  import Container from '@/model/Container'
   import {$, sleep} from '@/simpli'
 
   @Component
@@ -235,18 +276,22 @@
     }
 
     async sendCommand(node: Node) {
-      const idCommand = await node.sendCommand(['apt-get install dialog apt-utils -y', 'apt-get -y install mysql-server'])
+      const command = await node.sendCommand(['apt-get install dialog apt-utils -y', 'apt-get -y install mysql-server'])
 
-      if (idCommand) {
-        this.$snotify.info(idCommand)
-        console.log(idCommand)
+      if (command) {
+        this.$snotify.info(command.CommandId)
+        console.log(command.CommandId)
         sleep(20000)
-        node.getCommandOutput(idCommand)
+        node.getCommandOutputStream(command)
       }
     }
 
     async listCommands(node: Node) {
       $.modal.open(`cmd_${node.$id}`)
+    }
+
+    async test(node: Node) {
+      return
     }
 
   }

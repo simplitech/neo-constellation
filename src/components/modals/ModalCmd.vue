@@ -3,7 +3,7 @@
         <div class="verti">
             <div v-for="(command, i) in commands" :key="i">
                 <button @click="populateLog(command)" class="primary weight-full">
-                    {{command}}
+                    {{command.CommandId}}
                 </button>
             </div>
             <div class="verti">
@@ -41,13 +41,14 @@ import {Component, Prop, Vue} from 'vue-property-decorator'
 import Node from '@/model/Node'
 import StreamEvent from '@/model/StreamEvent'
 import {$, sleep, abort} from '@/simpli'
+import { Command } from 'aws-sdk/clients/ssm'
 
 @Component
 export default class ModalCmd extends Vue {
     @Prop({required: true}) name?: string
     @Prop({required: true}) node?: Node
 
-    commands: string[] = []
+    commands: Command[] = []
     log: StreamEvent[] = []
     input: string = ''
     show: boolean = true
@@ -62,15 +63,13 @@ export default class ModalCmd extends Vue {
         const commandObjects = await this.node!.listCommands() || []
 
         for (const command of commandObjects) {
-            if (command.CommandId) {
-                this.commands.push(command.CommandId)
-            }
+            this.commands.push(command)
         }
     }
 
-    async populateLog(idCommand: string) {
+    async populateLog(command: Command) {
         this.show = false
-        this.log = await this.node!.getCommandOutput(idCommand)
+        this.log = await this.node!.getCommandOutputStream(command)
     }
 
     async sendCommand() {

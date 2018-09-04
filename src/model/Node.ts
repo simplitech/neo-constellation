@@ -1,6 +1,7 @@
 import {
   $,
   info,
+  sleep,
   abort,
   Model,
   accessKeyId,
@@ -19,7 +20,9 @@ import {State} from '@/enum/State'
 import {Stream} from '@/enum/Stream'
 import AwsGlobal from '@/model/AwsGlobal'
 import Network from '@/model/Network'
+import Container from '@/model/Container'
 import StreamEvent from '@/model/StreamEvent'
+import { Command } from 'aws-sdk/clients/ssm'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -27,6 +30,7 @@ const shortid = require('shortid')
 /* *** AWS EC2 Instance *** */
 export default class Node extends Model {
 
+  static readonly MAX_ATTEMPTS = 10
   static readonly DEFAULT_KEY_NAME = 'NeoNode'
   static readonly DEFAULT_DEVICE_NAME = '/dev/xdva'
   static readonly DEFAULT_DEVICE_SNAPSHOT_ID = 'snap-05d1e6c7ad7b5f068'
@@ -173,6 +177,8 @@ export default class Node extends Model {
 
   publicDns: string | null = null
 
+  containers: Container[] = []
+
   initialScript: string | null =
   'sudo yum -y install docker\n'
 + 'sudo service docker start\n'
@@ -233,6 +239,8 @@ export default class Node extends Model {
     if (instance.SecurityGroups && instance.SecurityGroups[0]) {
       this.idSecurityGroup = instance.SecurityGroups[0].GroupName || null
     }
+
+    this.populateContainers()
   }
 
   /**
@@ -694,7 +702,46 @@ export default class Node extends Model {
     return null
   }
 
-  async sendCommand(commands: string[]) {
+  async populateContainers() {
+    const payload = 'docker ps --format \"'
+    + '{{.ID}},'
+    + '{{.Image}},'
+    + '{{.Command}},'
+    + '{{.CreatedAt}},'
+    + '{{.RunningFor}},'
+    + '{{.Ports}},'
+    + '{{.Status}},'
+    + '{{.Size}},'
+    + '{{.Names}},'
+    + '{{.Labels}},'
+    + '{{.Mounts}},'
+    + '{{.Networks}}'
+    + '\"'
+
+    const command = await this.sendCommand([payload], true)
+
+    if (!command) return
+
+    await this.waitForCommand(command)
+    const log = await this.getCommandRawOutput(command)
+
+    if (!log) return
+
+    for (const output of log.split('\n')) {
+      if (!Container.validate(output)) {
+        break
+      }
+
+      const container = new Container()
+      container.get(output)
+      this.containers.push(container)
+    }
+
+    console.log(this.containers)
+
+  }
+
+  async sendCommand(commands: string[], silent?: boolean) {
 
     const {region, idInstance} = this
     if (!region) abort('system.error.fieldNotDefined')
@@ -702,9 +749,10 @@ export default class Node extends Model {
 
     const payload = {
       DocumentName: 'AWS-RunShellScript',
+      Comment: silent ? 'silent' : '',
       CloudWatchOutputConfig: {
         CloudWatchLogGroupName: 'command-log',
-        CloudWatchOutputEnabled: true,
+        CloudWatchOutputEnabled: !silent,
       },
       InstanceIds: [idInstance!],
       Parameters: {
@@ -720,7 +768,7 @@ export default class Node extends Model {
 
     if (data && data.Command) {
       console.log(data.Command.CommandId)
-      return data.Command.CommandId
+      return data.Command
     }
   }
 
@@ -741,18 +789,19 @@ export default class Node extends Model {
     const ssm = new SSM()
 
     const data = await ssm.listCommands(payload).promise()
-    return data.Commands
+    return data.Commands && data.Commands.filter((c) => c.Comment !== 'silent')
 
   }
 
-  async getCommandOutput(idCommand: string) {
+  async getCommandOutputStream(command: Command) {
 
     const {region, idInstance} = this
     if (!region) abort('system.error.fieldNotDefined')
     if (!idInstance) abort('system.error.fieldNotDefined')
+    if (!command.CommandId) abort('system.error.fieldNotDefined')
 
-    const outData = this.getStreamLog(idCommand, Stream.OUT)
-    const errData = this.getStreamLog(idCommand, Stream.ERR)
+    const outData = this.getStreamLog(command, Stream.OUT)
+    const errData = this.getStreamLog(command, Stream.ERR)
 
     const values = await Promise.all([outData, errData])
 
@@ -762,6 +811,67 @@ export default class Node extends Model {
     const log = stdout.concat(stderr).sort((a, b) => a.timestamp! - b.timestamp!)
 
     return log as StreamEvent[]
+  }
+
+  async getCommandRawOutput(command: Command) {
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+    if (!command.CommandId) abort('system.error.fieldNotDefined')
+
+    AwsGlobal.switchRegion(region!)
+    const ssm = new SSM()
+
+    const payload = {
+      CommandId: command.CommandId!,
+      Details: true,
+    }
+
+    const data = await ssm.listCommandInvocations(payload).promise()
+
+    if (data &&
+      data.CommandInvocations &&
+      data.CommandInvocations[0] &&
+      data.CommandInvocations[0].CommandPlugins &&
+      data.CommandInvocations[0].CommandPlugins![0]) {
+        return data.CommandInvocations[0].CommandPlugins![0].Output
+      }
+
+  }
+
+  async waitForCommand(command: Command) {
+    const {region, idInstance} = this
+    if (!region) abort('system.error.fieldNotDefined')
+    if (!command.CommandId) abort('system.error.fieldNotDefined')
+    if (!idInstance) abort('system.error.fieldNotDefined')
+
+    const payload = {
+      CommandId: command.CommandId!,
+      InstanceId: idInstance!,
+    }
+
+    let request = command
+
+    AwsGlobal.switchRegion(region!)
+    const ssm = new SSM()
+
+    // Waits for command status
+    let attempts = 0
+    while (request.Status &&
+      request.Status === 'Pending' ||
+      request.Status === 'In Progress' ||
+      request.Status === 'Delayed') {
+
+      attempts++
+
+      if (attempts > Node.MAX_ATTEMPTS ) {
+        abort('system.error.timeOut')
+      }
+
+      request = await ssm.listCommands(payload).promise()
+      await sleep(1000)
+    }
+
   }
 
   async setSecurityGroupInboundRule(protocol: string, port: {from: number, to: number} | number) {
@@ -857,20 +967,21 @@ export default class Node extends Model {
     }
   }
 
-  private async getStreamLog(idCommand: string, stream: Stream) {
+  private async getStreamLog(command: Command, stream: Stream) {
     const { idInstance, region } = this
     if (!idInstance) abort('system.error.fieldNotDefined')
     if (!region) abort('system.error.fieldNotDefined')
+    if (!command.CommandId) abort('system.error.fieldNotDefined')
 
     const streamLog: StreamEvent[] = []
     let streamPath: string = ''
 
     switch (stream) {
       case Stream.OUT:
-        streamPath = `${idCommand}/${idInstance!}/aws-runShellScript/stdout`
+        streamPath = `${command.CommandId}/${idInstance!}/aws-runShellScript/stdout`
         break
       case Stream.ERR:
-        streamPath = `${idCommand}/${idInstance!}/aws-runShellScript/stderr`
+        streamPath = `${command.CommandId}/${idInstance!}/aws-runShellScript/stderr`
         break
     }
 
@@ -898,11 +1009,9 @@ export default class Node extends Model {
         }
       }
     } catch (error) {
-      console.log(error)
       if (error.code !== 'ResourceNotFoundException') throw error
     }
 
     return streamLog as StreamEvent[]
   }
-
 }
