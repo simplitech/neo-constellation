@@ -1,5 +1,6 @@
 import AWS, {EC2, S3, SSM} from 'aws-sdk'
 import IAM from 'aws-sdk/clients/iam'
+import DDB from 'aws-sdk/clients/dynamodb'
 import {AvailabilityZone, Region as RegionAws} from 'aws-sdk/clients/ec2'
 import Network from '@/model/Network'
 import {Region} from '@/enum/Region'
@@ -14,6 +15,7 @@ export default abstract class AwsGlobal {
   static iam: IAM = new IAM()
   static s3: S3 = new S3()
   static ssm: SSM = new SSM()
+  static ddb: DDB
 
   /**
    * Switch AWS Region
