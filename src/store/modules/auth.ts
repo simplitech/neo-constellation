@@ -5,6 +5,7 @@ import {$, push, successAndPush, errorAndPush, infoAndPush} from '@/simpli'
 import Authentication from '@/model/Authentication'
 import AWS, {EC2} from 'aws-sdk'
 import IAM from 'aws-sdk/clients/iam'
+import DDB from 'aws-sdk/clients/dynamodb'
 import AwsGlobal from '@/model/AwsGlobal'
 
 // initial state
@@ -115,6 +116,7 @@ const actions: ActionTree<AuthState, RootState> = {
     if (isLogged) {
       AWS.config.update({accessKeyId, secretAccessKey})
       AwsGlobal.ec2 = new EC2()
+      AwsGlobal.ddb = new DDB()
     }
   },
 

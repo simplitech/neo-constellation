@@ -23,6 +23,7 @@ import Network from '@/model/Network'
 import Container from '@/model/Container'
 import StreamEvent from '@/model/StreamEvent'
 import { Command } from 'aws-sdk/clients/ssm'
+import { deprecate } from 'util'
 
 const RSA = require('node-rsa')
 const shortid = require('shortid')
@@ -240,7 +241,10 @@ export default class Node extends Model {
       this.idSecurityGroup = instance.SecurityGroups[0].GroupName || null
     }
 
-    this.populateContainers()
+    // Only look for containers if the instance is running
+    if (this.state === State.RUNNING) {
+      this.populateContainers()
+    }
   }
 
   /**
@@ -341,41 +345,12 @@ export default class Node extends Model {
     $.snotify.info(idInstance, $.t('log.node.terminateInstances'))
     this.state = State.SHUTTING_DOWN
 
-    // async check network and destroy (without await)?
-    this.deleteNetworkIfEmpty()
-
     const fetch = async () => {
       await ec2.terminateInstances(payload).promise()
       await this.manageState()
     }
 
     await $.await.run(fetch, `node_${this.$id}`)
-  }
-
-  async deleteNetworkIfEmpty() {
-
-    const {ec2, idInstance, idNetwork} = this
-    if (!idInstance) abort('system.error.fieldNotDefined')
-    if (!idNetwork) abort('system.error.fieldNotDefined')
-
-    // async check network and destroy
-    const payload = {
-      Filters: [
-        {
-          Name: 'instance-id',
-          Values: [idInstance!],
-        },
-      ],
-    }
-
-    await ec2.waitFor('instanceTerminated', payload).promise()
-
-    const network = new Network()
-    await network.get(idNetwork!)
-
-    if (!network.nodes || network.nodes.length <= 0) {
-      await network.destroy()
-    }
   }
 
   async manageState() {
@@ -736,9 +711,6 @@ export default class Node extends Model {
       container.get(output)
       this.containers.push(container)
     }
-
-    console.log(this.containers)
-
   }
 
   async sendCommand(commands: string[], silent?: boolean) {
@@ -752,7 +724,7 @@ export default class Node extends Model {
       Comment: silent ? 'silent' : '',
       CloudWatchOutputConfig: {
         CloudWatchLogGroupName: 'command-log',
-        CloudWatchOutputEnabled: !silent,
+        CloudWatchOutputEnabled: silent ? false : true,
       },
       InstanceIds: [idInstance!],
       Parameters: {
@@ -767,7 +739,6 @@ export default class Node extends Model {
     const data = await ssm.sendCommand(payload).promise()
 
     if (data && data.Command) {
-      console.log(data.Command.CommandId)
       return data.Command
     }
   }
