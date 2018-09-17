@@ -1,10 +1,9 @@
-import {$, Model, ValidationRequired} from '@/simpli'
+import {$, Model, ValidationRequired, abort} from '@/simpli'
 import {EC2} from 'aws-sdk'
 import {Region} from '@/enum/Region'
 import AwsGlobal from '@/model/AwsGlobal'
 import Node from '@/model/Node'
 import _ from 'lodash'
-import { abort } from '@/helpers/custom.helper'
 
 export default class Network extends Model {
 

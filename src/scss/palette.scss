@@ -1,181 +1,131 @@
+@import "variables";
 @import "function";
 
-.pal-purple-4c {
-  @include palette(#21084C);
+/**
+Name your palette color in:
+http://chir.ag/projects/name-that-color
+ */
+
+// Primary Color
+.pal-primary, .pal-eastern-blue {
+  @include palette($primary-color);
 }
 
-.pal-purple-67 {
-  @include palette(#3B0967);
+// Secondary Color
+.pal-secondary, .pal-mountain-meadow {
+  @include palette($secondary-color);
 }
 
-.pal-purple-ee {
-  @include palette(#968BEE);
+// Tertiary Color
+.pal-tertiary, .pal-eden{
+  @include palette($tertiary-color);
 }
 
-.pal-navy {
-  @include palette(#00242f);
+// Success Color
+.pal-success, .pal-nasty-green {
+  @include palette($success-color);
+}
+
+// Warning Color
+.pal-warning, .pal-light-gold {
+  @include palette($warning-color);
+}
+
+// Danger Color
+.pal-danger, .pal-cardinal {
+  @include palette($danger-color);
+}
+
+// Light Background Color
+.pal-light-background, .pal-polar {
+  @include palette($light-background-color);
+}
+
+// Dark Background Color
+.pal-dark-background, .pal-bleached-cedar {
+  @include palette($dark-background-color);
+}
+
+/** White Palette **/
+/********************************************************/
+.pal-white {
+  @include palette(#ffffff);
+}
+
+.pal-white-10 {
+  @include palette(rgba(255, 255, 255, 0.1));
+}
+
+.pal-white-20 {
+  @include palette(rgba(255, 255, 255, 0.2));
+}
+
+.pal-white-30 {
+  @include palette(rgba(255, 255, 255, 0.3));
+}
+
+.pal-white-40 {
+  @include palette(rgba(255, 255, 255, 0.4));
 }
 
 .pal-white-50 {
   @include palette(rgba(255, 255, 255, 0.5));
 }
 
-.pal-black-0-30 {
-  @include palette(rgba(0, 0, 0, 0.3));
+.pal-white-60 {
+  @include palette(rgba(255, 255, 255, 0.6));
 }
 
-.pal-black-0-50 {
-  @include palette(rgba(0, 0, 0, 0.5));
+.pal-white-70 {
+  @include palette(rgba(255, 255, 255, 0.7));
 }
 
-.pal-black-0-80 {
-  @include palette(rgba(0, 0, 0, 0.8));
+.pal-white-80 {
+  @include palette(rgba(255, 255, 255, 0.8));
 }
 
-.pal-white {
-  @include palette(#ffffff);
+.pal-white-90 {
+  @include palette(rgba(255, 255, 255, 0.9));
 }
 
-.pal-aqua-blue {
-  @include palette(#00cfd6);
-}
-
-.pal-teal-blue {
-  @include palette(#00a2ac);
-}
-
-.pal-black-0 {
-  @include palette(rgba(0, 0, 0, 0));
-}
-
-.pal-dark-navy-blue-23 {
-  @include palette(rgba(0, 8, 11, 0.23));
-}
-
-.pal-navy-90 {
-  @include palette(rgba(0, 24, 31, 0.9));
-}
-
-.pal-navy-65 {
-  @include palette(rgba(0, 24, 31, 0.65));
-}
-
+/** Black Palette **/
+/********************************************************/
 .pal-black {
   @include palette(#000000);
 }
 
-.pal-navy-20 {
-  @include palette(rgba(0, 36, 47, 0.2));
+.pal-black-10 {
+  @include palette(rgba(0, 0, 0, 0.1));
 }
 
-.pal-ocean-blue {
-  @include palette(#0071af);
+.pal-black-20 {
+  @include palette(rgba(0, 0, 0, 0.2));
 }
 
-.pal-black-0-23 {
-  @include palette(rgba(0, 0, 0, 0.23));
+.pal-black-30 {
+  @include palette(rgba(0, 0, 0, 0.3));
 }
 
-.pal-pinkish-grey {
-  @include palette(#c0c0c0);
+.pal-black-40 {
+  @include palette(rgba(0, 0, 0, 0.4));
 }
 
-.pal-faded-blue {
-  @include palette(#6ba4c8);
+.pal-black-50 {
+  @include palette(rgba(0, 0, 0, 0.5));
 }
 
-.pal-white-two {
-  @include palette(#f2f2f2);
+.pal-black-60 {
+  @include palette(rgba(0, 0, 0, 0.6));
 }
 
-.pal-white-three {
-  @include palette(#d4d4d4);
+.pal-black-70 {
+  @include palette(rgba(0, 0, 0, 0.7));
 }
 
-.pal-warm-grey {
-  @include palette(#9b9b9b);
+.pal-black-80 {
+  @include palette(rgba(0, 0, 0, 0.8));
 }
 
-.pal-white-four {
-  @include palette(#d8d8d8);
-}
-
-.pal-black-two {
-  @include palette(#3a3a3a);
-}
-
-.pal-dull-yellow-37 {
-  @include palette(rgba(236, 222, 91, 0.37));
-}
-
-.pal-pale-peach {
-  @include palette(#ffefb9);
-}
-
-.pal-black-three {
-  @include palette(#323232);
-}
-
-.pal-golden-yellow-50 {
-  @include palette(rgba(251, 195, 36, 0.5));
-}
-
-.pal-black-0-22 {
-  @include palette(rgba(0, 0, 0, 0.22));
-}
-
-.pal-white-69 {
-  @include palette(rgba(255, 255, 255, 0.69));
-}
-
-.pal-white-30 {
-  @include palette(rgba(255, 255, 255, 0.30));
-}
-
-.pal-white-20 {
-  @include palette(rgba(255, 255, 255, 0.20));
-}
-
-.pal-white-15 {
-  @include palette(rgba(255, 255, 255, 0.15));
-}
-
-.pal-white-64 {
-  @include palette(rgba(255, 255, 255, 0.64));
-}
-
-.pal-greyish-brown {
-  @include palette(#4a4a4a);
-}
-
-.pal-raspberry-69 {
-  @include palette(rgba(168, 2, 75, 0.69));
-}
-
-.pal-orange {
-  @include palette(#f8670d);
-}
-
-.pal-light-burgundy-50 {
-  @include palette(rgba(139, 41, 58, 0.5));
-}
-
-.pal-nasty-green {
-  @include palette(#6da544);
-}
-
-.pal-light-gold {
-  @include palette(#ffda44);
-}
-
-.pal-raspberry {
-  @include palette(rgba(168, 2, 75, 1));
-}
-
-.pal-white-five {
-  @include palette(#f0f0f0);
-}
-
-.pal-peacock-blue {
-  @include palette(#0052b4);
+.pal-black-90 {
+  @include palette(rgba(0, 0, 0, 0.9));
 }

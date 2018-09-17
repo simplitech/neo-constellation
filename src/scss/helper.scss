@@ -1,0 +1,70 @@
+
+.text-light {
+  @extend .pal-white-70.text;
+}
+
+.text-dark {
+  @extend .pal-black-70.text;
+}
+
+.text-uppercase {
+  text-transform: uppercase;
+}
+
+.text-lowercase {
+  text-transform: lowercase;
+}
+
+.text-primary {
+  @extend .pal-primary.text;
+}
+
+.text-secondary {
+  @extend .pal-secondary.text;
+}
+
+.text-tertiary {
+  @extend .pal-tertiary.text;
+}
+
+.text-success {
+  @extend .pal-success.text;
+}
+
+.text-warning {
+  @extend .pal-warning.text;
+}
+
+.text-danger {
+  @extend .pal-danger.text;
+}
+
+.bg-primary {
+  @extend .text-light;
+  @extend .pal-primary.bg;
+}
+
+.bg-secondary {
+  @extend .text-light;
+  @extend .pal-secondary.bg;
+}
+
+.bg-tertiary {
+  @extend .text-light;
+  @extend .pal-tertiary.bg;
+}
+
+.bg-success {
+  @extend .text-light;
+  @extend .pal-success.bg;
+}
+
+.bg-warning {
+  @extend .text-light;
+  @extend .pal-warning.bg;
+}
+
+.bg-danger {
+  @extend .text-light;
+  @extend .pal-danger.bg;
+}

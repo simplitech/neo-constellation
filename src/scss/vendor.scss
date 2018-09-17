@@ -1,5 +1,13 @@
 @import "palette";
 
+.modal {
+  .modal-scroll {
+    width: unset;
+    .modal-view {
+    }
+  }
+}
+
 // Vue Tooltip
 .tooltip {
   display: block !important;

@@ -1,6 +1,5 @@
 import Node from '@/model/Node'
-import { $ } from '@/simpli'
-import { abort } from '@/helpers/custom.helper'
+import {$, abort} from '@/simpli'
 
 export default class Container {
 
