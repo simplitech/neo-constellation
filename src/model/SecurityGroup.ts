@@ -1,4 +1,4 @@
-import { $, Model, ValidationRequired, abort } from '@/simpli'
+import { $, Model, ValidationRequired, abort, ResponseSerialize } from '@/simpli'
 import { EC2 } from 'aws-sdk'
 import { Region } from '@/enum/Region'
 import AwsGlobal from '@/model/AwsGlobal'
@@ -20,15 +20,20 @@ export default class SecurityGroup {
     $id: string | null = null
     name: string | null = null
     networkId: string | null = null
+
     realSecurityGroups: RealSecurityGroup[] = []
+
+    @ResponseSerialize(Rule)
     inbound: Rule[] = []
+
+    @ResponseSerialize(Rule)
     outbound: Rule[] = []
 
-    hasSecurityGroup(region: Region, sgReal: string) {
+    hasRealSecurityGroup(region: Region, sgReal: string) {
         return !!this.realSecurityGroups.find( (sg) => sg[region] === sgReal)
     }
 
-    getSecurityGroup(region: Region) {
+    getRealSecurityGroup(region: Region) {
         const sg = this.realSecurityGroups.find( (sg) => sg[region] !== undefined && sg[region] !== null)
         return sg && sg[region] || null
 
@@ -49,7 +54,7 @@ export default class SecurityGroup {
 
     }
 
-    async delete() {
+    async destroy() {
         const regions = await AwsGlobal.regions()
         const promises = []
 

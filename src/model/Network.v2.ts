@@ -53,17 +53,51 @@ export default class NetworkV2 extends S3Wrapper {
         return network
     }
 
-    //
+    async delete() {
+        // If network is running, we need to also delete AWS resources
+        if (this.isRunning) {
+            let promises = []
+
+            // Terminating EC2 instances
+            for (const host of this.hosts) {
+                promises.push(host.terminate())
+            }
+
+            await Promise.all(promises)
+
+            // TODO: waitFor all instances to be terminated
+
+            promises = []
+
+            // Deleting security groups
+            for (const securityGroup of this.securityGroups) {
+                promises.push(securityGroup.destroy())
+            }
+
+            await Promise.all(promises)
+        }
+
+        super.delete()
+    }
+
     async build() {
         if (this.isRunning) { abort('This network is already running') }
 
-        /* This method will in fact run EC2 instances, create security groups, key pairs,
-        instance profiles, roles and prepare the instances to have their logs read
+        /* This method will in fact create Real Security Groups, EC2 instances
+        and prepare the instances to have their logs read
         */
 
-        for (const host of this.hosts) {
-            host.create()
+        let promises = []
+        for (const securityGroup of this.securityGroups) {
+            promises.push(securityGroup.create())
         }
+        await Promise.all(promises)
+
+        promises = []
+        for (const host of this.hosts) {
+            promises.push(host.create())
+        }
+        await Promise.all(promises)
 
         this.runningSince = new Date()
 
@@ -118,7 +152,11 @@ export default class NetworkV2 extends S3Wrapper {
 
     async synchronizeSecurityGroups() {
         for (const securityGroup of this.securityGroups) {
-            securityGroup.transformFromAWS()
+            await securityGroup.transformFromAWS()
+        }
+
+        for (const hostSecurityGroup of this.hosts.map( (h) => h.securityGroup)) {
+            if (hostSecurityGroup) await hostSecurityGroup.transformFromAWS()
         }
     }
 }

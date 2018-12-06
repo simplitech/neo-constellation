@@ -320,71 +320,57 @@ export default class DashboardView extends Vue {
     $.modal.open(`cmd_${node.$id}`)
   }
 
-  async sgtest() {
-
-      const sg = new SecurityGroup()
-      sg.name = 'teste-sg'
-      sg.networkId = 'net1'
-
-      await sg.delete()
-
-      const host = new Host()
-      host.networkId = 'net1'
-      host.securityGroup = sg
-      host.name = 'host1'
-      host.region = Region.SA_EAST_1
-
-      await host.create()
-  }
-
     async test() {
-        const network = new NetworkV2()
-        await network.get('H8u2vElHm')
+        /*let networkId: String | null
+
+        let network = new NetworkV2()
+
+        network.name = 'NetworkName'
+
+        await network.persist()
+
+        log('Network', network)
+        networkId = network.$id
+
+        const inRule = new Rule()
+        inRule.source = '0.0.0.0/0'
+        inRule.portRangeStart = 8080
+        inRule.portRangeEnd = 8443
+
+        const sg = new SecurityGroup()
+        sg.name = 'SecurityGroupTest1'
+        sg.inbound.push(inRule)
+        sg.networkId = network.$id
+
+        network.securityGroups.push(sg)
+
+        await network.persist()
+
         log('Network', network)
 
-        network.delete()
-        const sg = new SecurityGroup()
-        sg.name = ''
+        const host = new Host()
+        host.name = 'HostTest1'
+        host.region = Region.SA_EAST_1
+        host.size = Size.T2_NANO
+        host.availabilityZone = Zone.SA_EAST_1A
+        host.imageId = 'ami-07b14488da8ea02a0'
+        host.securityGroup = network.securityGroups[0]
 
-        // network.name = 'NetworkName'
+        await network.addHost(host)
 
-        // await network.persist()
+        await network.persist()
 
-        // log('Network', network)
+        log('Network', network)
 
-        // const inRule = new Rule()
-        // inRule.source = '0.0.0.0/0'
-        // inRule.portRangeStart = 8080
-        // inRule.portRangeEnd = 8443
+        network = new NetworkV2()
 
-        // const sg = new SecurityGroup()
-        // sg.name = 'SecurityGroupTest1'
-        // sg.inbound.push(inRule)
-        // sg.networkId = network.$id
 
-        // sg.delete()
+        await network.get(networkId!)
+        await network.build()*/
 
-        // network.securityGroups.push(sg)
-
-        // await network.persist()
-
-        // log('Network', network)
-
-        // const host = new Host()
-        // host.$id = 'mdJFmFK3fg'
-        // host.name = 'HostTest1'
-        // host.region = Region.SA_EAST_1
-        // host.size = Size.T2_NANO
-        // host.availabilityZone = Zone.SA_EAST_1A
-        // host.imageId = 'ami-07b14488da8ea02a0'
-        // host.securityGroup = network.securityGroups[0]
-
-        // // await network.addHost(host)
-
-        // await network.persist()
-
-        // log('Network', network)
-
+        const network = new NetworkV2()
+        await network.get('sqWowgUEo')
+        await network.delete()
 
 
     }

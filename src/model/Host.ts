@@ -54,6 +54,7 @@ export default class Host {
 
     $id: string | null = null
     networkId: string | null = null
+    instanceId: string | null = null
     name: string | null = null
     state: State | null = null
     cpuUsage: number | null = null
@@ -85,14 +86,11 @@ export default class Host {
         const { switchRegion } = AwsGlobal
 
         if (!this.region) { abort(`Missing region information`) }
-        if (!this.$id) { abort(`Missing ID information`) }
+        if (!this.instanceId) { abort(`Missing ID information`) }
 
         const payload = {
-            Filters: [
-                {
-                    Name: `tag:id`,
-                    Values: [this.$id!],
-                },
+            InstanceIds: [
+                this.instanceId!,
             ],
         }
 
@@ -113,12 +111,15 @@ export default class Host {
 
                     if (instance) {
 
-                        this.$id = instance.InstanceId || assign('\$id', this.$id)
+                        this.$id = instance.Tags && instance.Tags.map(
+                            (t) => t.Key && t.Key === 'Id' && t.Value,
+                            )[0] || assign('\$id', this.$id)
+                        this.instanceId = instance.InstanceId || assign('instanceId', this.instanceId)
                         this.networkId = instance.Tags && instance.Tags.map(
-                            (t) => t.Key && t.Key === 'networkId' && t.Value,
-                        )[0] || this.networkId
+                            (t) => t.Key && t.Key === 'idNetwork' && t.Value,
+                        )[0] || assign('networkId', this.networkId)
                         this.name = instance.Tags && instance.Tags.map(
-                            (t) => t.Key && t.Key === 'name' && t.Value,
+                            (t) => t.Key && t.Key === 'Name' && t.Value,
                         )[0] || assign('name', this.name)
                         this.state = instance.State && instance.State.Code || assign('state', this.state)
                         // TODO: awsHost.cpuUsage
@@ -129,7 +130,7 @@ export default class Host {
                             && instance.Placement.AvailabilityZone as Zone
                             || assign('availabilityZone', this.availabilityZone)
                         this.imageId = instance.ImageId || assign('imageId', this.imageId)
-                        this.securityGroup = network.securityGroups.find((sg) => sg.hasSecurityGroup(
+                        this.securityGroup = network.securityGroups.find((sg) => sg.hasRealSecurityGroup(
                             this.region!,
                             instance!.SecurityGroups![0].GroupName!,
                             ) ,
@@ -137,13 +138,15 @@ export default class Host {
 
                         this.applications = this.applications // Tem como checar? Acho que nao
 
+                    } else {
+                        Log(1, 'Host instance not found in EC2')
                     }
 
-                    Log(1, 'Host instance not found in EC2')
                 }
+            } else {
+                Log(1, 'Host instance not found in EC2')
             }
 
-            Log(1, 'Host instance not found in EC2')
         } catch (e) {
             // TODO: Handle error
             Log(2, e.message)
@@ -159,7 +162,10 @@ export default class Host {
             this.$id = uid()
         }
 
-        let sgParam = this.securityGroup && this.securityGroup.getSecurityGroup(this.region!) || null
+        // Synchronize SG
+        if (this.securityGroup) {
+            await this.securityGroup.transformFromAWS()
+        }
 
         /* Fluxo:
         ** 1) Security Group -> Build SG
@@ -173,14 +179,10 @@ export default class Host {
         }
 
         // 1)
+        const sgParam = this.securityGroup && this.securityGroup.getRealSecurityGroup(this.region!)
+
         if (!sgParam) {
-            sgParam = ''
-            if (this.securityGroup) {
-                await this.securityGroup.create()
-                sgParam = this.securityGroup.getSecurityGroup(this.region!) || ''
-            } else {
-                abort(`Missing security group information`)
-            }
+            abort(`Missing Security Group information`)
         }
 
         // 4)
@@ -190,7 +192,7 @@ export default class Host {
             ImageId: this.imageId!,
             InstanceType: this.size!,
             KeyName: Initializer.DEFAULT_KEY_NAME,
-            SecurityGroupIds: [sgParam],
+            SecurityGroupIds: [sgParam!],
             MinCount: 1,
             MaxCount: 1,
             Placement: {
@@ -225,13 +227,26 @@ export default class Host {
         info('log.node.runInstances')
         const data = await this.ec2.runInstances(payload).promise()
 
-        if (data.Instances && data.Instances[0]) this.$id = data.Instances[0].InstanceId || null
+        if (data.Instances && data.Instances[0]) this.instanceId = data.Instances[0].InstanceId || null
 
-        if (this.$id) {
+        if (this.instanceId) {
             info('log.node.attachInstanceProfile')
             await this.attachInstanceProfile()
             info('log.node.instanceCreated')
         }
+
+    }
+
+    async terminate() {
+        this.switchRegion()
+
+        if (!this.instanceId) { abort (`Missing ID information`)}
+
+        await this.ec2.terminateInstances({
+            InstanceIds: [
+                this.instanceId!,
+            ],
+        }).promise()
 
     }
 
@@ -260,14 +275,14 @@ export default class Host {
           IamInstanceProfile: {
             Name: Initializer.DEFAULT_INSTANCE_PROFILE_NAME,
           },
-          InstanceId: this.$id!,
+          InstanceId: this.instanceId!,
         }
 
         const waitPayload = {
           Filters: [
             {
               Name: 'instance-id',
-              Values: [this.$id!],
+              Values: [this.instanceId!],
             },
           ],
         }
