@@ -1,4 +1,5 @@
 import {ID, Currency, Lang} from '@/simpli'
+import User from '@/model/User'
 
 /**
  * Root
@@ -8,15 +9,14 @@ export interface RootState {
   language: Lang
   currency: Currency
   year: number
+  extension: string
 }
 
 /**
  * Auth Module
  */
 export interface AuthState {
-  username?: string,
-  accessKeyId?: string,
-  secretAccessKey?: string,
+  user: User,
   unauthenticatedPath?: string,
   eventListener: AuthEventListener,
 }

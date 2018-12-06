@@ -11,6 +11,11 @@
           {{$t('view.dashboard.reloadList')}}
         </button>
       </div>
+      <div class="col">
+        <button @click="test">
+          Testing
+        </button>
+      </div>
     </div>
 
     <await name="networks" effect="fade-up">
@@ -254,51 +259,132 @@
 </template>
 
 <script lang="ts">
-  import {Component, Vue} from 'vue-property-decorator'
-  import {Getter, Action} from 'vuex-class'
-  import Network from '@/model/Network'
-  import Node from '@/model/Node'
-  import Container from '@/model/Container'
-  import {$, sleep} from '@/simpli'
+import { Component, Vue } from 'vue-property-decorator'
+import { Getter, Action } from 'vuex-class'
+import Network from '@/model/Network'
+import NetworkV2 from '@/model/Network.v2'
+import Host from '@/model/Host'
+import Node from '@/model/Node'
+import Rule from '@/model/Rule'
+import SecurityGroup from '@/model/SecurityGroup'
+import Container from '@/model/Container'
+import { $, sleep } from '@/simpli'
+import Collection from '@/app/Collection'
+import { log } from '@/simpli'
+import { Size } from '@/enum/Size'
+import {Region} from '@/enum/Region'
+import {State} from '@/enum/State'
+import Dashboard from '@/model/Dashboard'
+import Command from '@/model/Command'
+import HostEntry from '@/model/HostEntry'
+import User from '@/model/User'
+import Initializer from '@/app/Initializer'
+import { Zone } from '@/enum/Zone'
 
-  @Component
-  export default class DashboardView extends Vue {
-    @Getter('auth/username') username?: string
+@Component
+export default class DashboardView extends Vue {
+  @Getter('auth/user')
+  user?: User
 
-    networks: Network[] = []
+  networks: Network[] = []
 
-    async mounted() {
-      await this.populate()
-    }
-
-    async populate() {
-      this.networks = await Network.list()
-
-      // Waiting the next DOM render
-      await sleep(500)
-
-      // Verifies all the floating states and prepares them to the state
-      Network.manageStateFromList(this.networks)
-    }
-
-    async sendCommand(node: Node) {
-      const command = await node.sendCommand(['apt-get install dialog apt-utils -y', 'apt-get -y install mysql-server'])
-
-      if (command) {
-        this.$snotify.info(command.CommandId)
-        console.log(command.CommandId)
-        sleep(20000)
-        node.getCommandOutputStream(command)
-      }
-    }
-
-    async listCommands(node: Node) {
-      $.modal.open(`cmd_${node.$id}`)
-    }
-
-    async test(node: Node) {
-      return
-    }
-
+  async mounted() {
+    await this.populate()
   }
+
+  async populate() {
+    this.networks = await Network.list()
+
+    // Waiting the next DOM render
+    await sleep(500)
+
+    // Verifies all the floating states and prepares them to the state
+    Network.manageStateFromList(this.networks)
+  }
+
+  async sendCommand(node: Node) {
+    const command = await node.sendCommand([
+      'apt-get install dialog apt-utils -y',
+      'apt-get -y install mysql-server',
+    ])
+
+    if (command) {
+      this.$snotify.info(command.CommandId)
+      console.log(command.CommandId)
+      sleep(20000)
+      node.getCommandOutputStream(command)
+    }
+  }
+
+  async listCommands(node: Node) {
+    $.modal.open(`cmd_${node.$id}`)
+  }
+
+  async sgtest() {
+
+      const sg = new SecurityGroup()
+      sg.name = 'teste-sg'
+      sg.networkId = 'net1'
+
+      await sg.delete()
+
+      const host = new Host()
+      host.networkId = 'net1'
+      host.securityGroup = sg
+      host.name = 'host1'
+      host.region = Region.SA_EAST_1
+
+      await host.create()
+  }
+
+    async test() {
+        const network = new NetworkV2()
+        await network.get('H8u2vElHm')
+        log('Network', network)
+
+        network.name = 'NetworkName'
+
+        await network.persist()
+
+        log('Network', network)
+
+        const inRule = new Rule()
+        inRule.source = '0.0.0.0/0'
+        inRule.portRangeStart = 8080
+        inRule.portRangeEnd = 8443
+
+        const sg = new SecurityGroup()
+        sg.name = 'SecurityGroupTest1'
+        sg.inbound.push(inRule)
+        sg.networkId = network.$id
+
+        sg.delete()
+
+        network.securityGroups.push(sg)
+
+        await network.persist()
+
+        log('Network', network)
+
+        const host = new Host()
+        host.$id = 'mdJFmFK3fg'
+        host.name = 'HostTest1'
+        host.region = Region.SA_EAST_1
+        host.size = Size.T2_NANO
+        host.availabilityZone = Zone.SA_EAST_1A
+        host.imageId = 'ami-07b14488da8ea02a0'
+        host.securityGroup = network.securityGroups[0]
+
+        // await network.addHost(host)
+
+        await network.persist()
+
+        log('Network', network)
+
+        await network.build()
+
+
+    }
+
+}
 </script>

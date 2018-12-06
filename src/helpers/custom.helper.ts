@@ -3,4 +3,6 @@
  * Note2: be sure the name you have chosen does not exist in simpli-ts-vue
  */
 
+export * from '@/helpers/console.log.helper'
+export * from '@/helpers/logger.helper'
 export const random = () => Math.random()

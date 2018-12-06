@@ -12,6 +12,7 @@ export const state: RootState = {
   language: defaultLang,
   currency: defaultCurrency,
   year: moment().year(),
+  extension: '.json',
 }
 
 // root getters
@@ -20,6 +21,7 @@ export const getters: GetterTree<RootState, RootState> = {
   language: ({language}) => language,
   currency: ({currency}) => currency,
   year: ({year}) => year,
+  extension: ({extension}) => extension,
 }
 
 // root actions

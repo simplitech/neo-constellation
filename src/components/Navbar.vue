@@ -12,7 +12,7 @@
 
       <div class="slot-2">
           <span class="text-white">
-            {{username}}
+            {{user.username}}
           </span>
       </div>
 
@@ -36,11 +36,12 @@
 <script lang="ts">
 import {Component, Prop, Vue} from 'vue-property-decorator'
 import {Getter, Action} from 'vuex-class'
+import User from '@/model/User'
 
 @Component
 export default class Navbar extends Vue {
   @Getter('auth/isLogged') isLogged?: boolean
-  @Getter('auth/username') username?: string
+  @Getter('auth/user') user?: User
 
   @Action('auth/signOut') signOut?: Function
 }

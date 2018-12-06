@@ -1,223 +1,226 @@
-import {ActionTree, GetterTree, Module, MutationTree} from 'vuex'
+import { ActionTree, GetterTree, Module, MutationTree } from 'vuex'
 import * as types from '@/store/mutation-types'
-import {AuthState, RootState} from '@/types/store'
-import {$, push, successAndPush, errorAndPush, infoAndPush} from '@/simpli'
+import { AuthState, RootState } from '@/types/store'
+import { $, push, successAndPush, errorAndPush, infoAndPush } from '@/simpli'
+import User from '@/model/User'
 import Authentication from '@/model/Authentication'
-import AWS, {EC2} from 'aws-sdk'
+import AWS, { EC2, DynamoDB, S3 } from 'aws-sdk'
 import IAM from 'aws-sdk/clients/iam'
 import AwsGlobal from '@/model/AwsGlobal'
+import {plainToClass, classToPlain, plainToClassFromExist} from 'class-transformer'
+import Initializer from '@/app/Initializer'
 
 // initial state
 const state: AuthState = {
-  username: undefined,
-  accessKeyId: undefined,
-  secretAccessKey: undefined,
-  unauthenticatedPath: undefined,
-  eventListener: {
-    signIn: [],
-    auth: [],
-    signOut: [],
-  },
+    user: new User(),
+    unauthenticatedPath: undefined,
+    eventListener: {
+        signIn: [],
+        auth: [],
+        signOut: [],
+    },
 }
 
 // getters
 const getters: GetterTree<AuthState, RootState> = {
-  isLogged: ({accessKeyId, secretAccessKey}) => !!accessKeyId && !!secretAccessKey,
-  username: ({username}) => username,
-  accessKeyId: ({accessKeyId}) => accessKeyId,
-  secretAccessKey: ({secretAccessKey}) => secretAccessKey,
-  unauthenticatedPath: ({unauthenticatedPath}) => unauthenticatedPath,
+    isLogged: ({ user }) => !!user.accessKeyId && !!user.secretAccessKey,
+    user: ({ user }) => user,
+    unauthenticatedPath: ({ unauthenticatedPath }) => unauthenticatedPath,
 }
 
 // actions
 const actions: ActionTree<AuthState, RootState> = {
-  /**
-   * Sign in account
-   * @param state
-   * @param commit
-   * @param getters
-   * @param model format => model: { account, password } (non-encrypted)
-   */
-  signIn: async ({state, commit, getters}, model: Authentication) => {
+    /**
+     * Sign in account
+     * @param state
+     * @param commit
+     * @param getters
+     * @param model format => model: { account, password } (non-encrypted)
+     */
+    signIn: async ({ state, commit, getters }, model: Authentication) => {
 
-    const {accessKeyId, secretAccessKey} = model
-    AWS.config.update({accessKeyId, secretAccessKey})
+        const { accessKeyId, secretAccessKey } = model
+        const user = new User()
+        user.accessKeyId = accessKeyId
+        user.secretAccessKey = secretAccessKey
 
-    AwsGlobal.ec2 = new EC2()
-    AwsGlobal.iam = new IAM()
+        AWS.config.update({ accessKeyId, secretAccessKey })
 
-    let username: string = $.t('app.anonymous')
+        AwsGlobal.ec2 = new EC2()
+        AwsGlobal.iam = new IAM()
+        AwsGlobal.ddb = new DynamoDB.DocumentClient()
 
-    const fetch = async () => {
-      await model.validate()
+        let username: string = $.t('app.anonymous')
 
-      try {
-        const resp = await AwsGlobal.iam.getUser().promise()
-        username = resp.User.UserName
-      } catch (e) {
-        if (e.code === 'InvalidClientTokenId') {
-          errorAndPush('system.error.invalidClientTokenId', '/login', 'httpResponse.403')
-        } else if (e.code === 'CredentialsError') {
-          errorAndPush('system.error.invalidCredentials', '/login', 'httpResponse.401')
-        } else errorAndPush('system.error.unexpectedError', '/login')
-        throw e
-      }
-    }
+        const fetch = async () => {
+            await model.validate()
 
-    // Show spinner while waiting validation (3000ms delay)
-    await $.await.run(fetch, 'login', 3000)
+            try {
+                const resp = await AwsGlobal.iam.getUser().promise()
+                username = resp.User.UserName
+            } catch (e) {
+                if (e.code === 'InvalidClientTokenId') {
+                    errorAndPush('system.error.invalidClientTokenId', '/login', 'httpResponse.403')
+                } else if (e.code === 'CredentialsError') {
+                    errorAndPush('system.error.invalidCredentials', '/login', 'httpResponse.401')
+                } else errorAndPush('system.error.unexpectedError', '/login')
+                throw e
+            }
+        }
 
-    localStorage.setItem('username', username)
-    localStorage.setItem('accessKeyId', accessKeyId)
-    localStorage.setItem('secretAccessKey', secretAccessKey)
+        // Show spinner while waiting validation (3000ms delay)
+        await $.await.run(fetch, 'login', 3000)
 
-    commit(types.POPULATE)
+        user.username = username
 
-    $.snotify.info(username, $.t('system.info.welcome'))
+        localStorage.setItem('user', JSON.stringify(classToPlain(user)))
 
-    if (getters.unauthenticatedPath && $.route.name !== 'login') push(getters.unauthenticatedPath)
-    else push('/dashboard')
+        commit(types.POPULATE)
 
-    commit(types.SET_UNAUTHENTICATED_PATH, undefined)
+        Initializer.init()
 
-    state.eventListener.signIn.forEach((item) => item())
-  },
+        $.snotify.info(username, $.t('system.info.welcome'))
 
-  /**
-   * Verifies authorization and refresh user info.
-   * Note: If it is not logged then dispatches signOut
-   * @param dispatch
-   * @param commit
-   * @param getters
-   * @param state
-   */
-  auth: async ({dispatch, commit, getters, state}) => {
-    dispatch('init')
-    const {isLogged} = getters
+        if (getters.unauthenticatedPath && $.route.name !== 'login') push(getters.unauthenticatedPath)
+        else push('/dashboard')
 
-    if (isLogged) {
-      state.eventListener.auth.forEach((item) => item())
-    } else {
-      commit(types.SET_UNAUTHENTICATED_PATH, $.route.path)
-      dispatch('signOut', true)
-    }
-  },
+        commit(types.SET_UNAUTHENTICATED_PATH, undefined)
 
-  /**
-   * Initializes the module
-   * @param commit
-   * @param getters
-   */
-  init: async ({commit, getters}) => {
-    commit(types.POPULATE)
-    const {isLogged, accessKeyId, secretAccessKey} = getters
+        state.eventListener.signIn.forEach((item) => item())
+    },
 
-    if (isLogged) {
-      AWS.config.update({accessKeyId, secretAccessKey})
-      AwsGlobal.ec2 = new EC2()
-    }
-  },
+    /**
+     * Verifies authorization and refresh user info.
+     * Note: If it is not logged then dispatches signOut
+     * @param dispatch
+     * @param commit
+     * @param getters
+     * @param state
+     */
+    auth: async ({ dispatch, commit, getters, state }) => {
+        dispatch('init')
+        const { isLogged } = getters
 
-  /**
-   * Sign out account
-   * @param state
-   * @param commit
-   * @param showError
-   */
-  signOut: ({state, commit}, showError: boolean = false) => {
-    const accessKeyId = undefined
-    const secretAccessKey = undefined
-    AWS.config.update({accessKeyId, secretAccessKey})
+        if (isLogged) {
+            state.eventListener.auth.forEach((item) => item())
+        } else {
+            commit(types.SET_UNAUTHENTICATED_PATH, $.route.path)
+            dispatch('signOut', true)
+        }
+    },
 
-    if (showError) errorAndPush('system.error.unauthorized', '/login')
-    else push('/login')
+    /**
+     * Initializes the module
+     * @param commit
+     * @param getters
+     */
+    init: async ({ commit, getters }) => {
+        commit(types.POPULATE)
+        const { isLogged, user} = getters
 
-    commit(types.FORGET)
-    state.eventListener.signOut.forEach((item) => item())
-  },
+        if (isLogged) {
+            AWS.config.update({ accessKeyId: user.accessKeyId, secretAccessKey: user.secretAccessKey })
+            AwsGlobal.ec2 = new EC2()
+            AwsGlobal.s3 = new S3()
+            AwsGlobal.iam = new IAM()
+        }
+    },
 
-  /**
-   * On SignIn Event
-   * @param dispatch
-   * @param callback
-   */
-  onSignIn: ({dispatch}, callback) => dispatch('addEventListener', {name: 'signIn', callback}),
+    /**
+     * Sign out account
+     * @param state
+     * @param commit
+     * @param showError
+     */
+    signOut: ({ state, commit }, showError: boolean = false) => {
+        const accessKeyId = undefined
+        const secretAccessKey = undefined
+        AWS.config.update({ accessKeyId, secretAccessKey })
 
-  /**
-   * On Auth Event
-   * @param dispatch
-   * @param callback
-   */
-  onAuth: ({dispatch}, callback) => dispatch('addEventListener', {name: 'auth', callback}),
+        if (showError) errorAndPush('system.error.unauthorized', '/login')
+        else push('/login')
 
-  /**
-   * On SignOut Event
-   * @param dispatch
-   * @param callback
-   */
-  onSignOut: ({dispatch}, callback) => dispatch('addEventListener', {name: 'signOut', callback}),
+        commit(types.FORGET)
+        state.eventListener.signOut.forEach((item) => item())
+    },
 
-  /**
-   * Add event listener
-   * @param commit
-   * @param payload {name, callback}
-   */
-  addEventListener: ({commit}, payload) => commit(types.ADD_EVENT_LISTENER, payload),
+    /**
+     * On SignIn Event
+     * @param dispatch
+     * @param callback
+     */
+    onSignIn: ({ dispatch }, callback) => dispatch('addEventListener', { name: 'signIn', callback }),
 
-  /**
-   * Remove event listener
-   * @param commit
-   * @param payload
-   */
-  removeEventListener: ({commit}, payload) => commit(types.REMOVE_EVENT_LISTENER, payload),
+    /**
+     * On Auth Event
+     * @param dispatch
+     * @param callback
+     */
+    onAuth: ({ dispatch }, callback) => dispatch('addEventListener', { name: 'auth', callback }),
+
+    /**
+     * On SignOut Event
+     * @param dispatch
+     * @param callback
+     */
+    onSignOut: ({ dispatch }, callback) => dispatch('addEventListener', { name: 'signOut', callback }),
+
+    /**
+     * Add event listener
+     * @param commit
+     * @param payload {name, callback}
+     */
+    addEventListener: ({ commit }, payload) => commit(types.ADD_EVENT_LISTENER, payload),
+
+    /**
+     * Remove event listener
+     * @param commit
+     * @param payload
+     */
+    removeEventListener: ({ commit }, payload) => commit(types.REMOVE_EVENT_LISTENER, payload),
 }
 
 // mutations
 const mutations: MutationTree<AuthState> = {
-  // Populate mutation
-  [types.POPULATE](state) {
-    const username = localStorage.getItem('username')
-    const accessKeyId = localStorage.getItem('accessKeyId')
-    const secretAccessKey = localStorage.getItem('secretAccessKey')
+    // Populate mutation
+    [types.POPULATE](state) {
 
-    if (username) state.username = username
-    if (accessKeyId) state.accessKeyId = accessKeyId
-    if (secretAccessKey) state.secretAccessKey = secretAccessKey
-  },
-  // Forget mutation
-  [types.FORGET](state) {
-    state.username = undefined
-    state.accessKeyId = undefined
-    state.secretAccessKey = undefined
+        const userJSON = localStorage.getItem('user')
 
-    localStorage.removeItem('username')
-    localStorage.removeItem('accessKeyId')
-    localStorage.removeItem('secretAccessKey')
-  },
-  // Set UnauthenticatedPath mutation
-  [types.SET_UNAUTHENTICATED_PATH](state, val) {
-    state.unauthenticatedPath = val
-  },
-  // Add Event Listener mutation
-  [types.ADD_EVENT_LISTENER](state, {name, callback}) {
-    state.eventListener[name].push(callback)
-  },
-  // Remove Event Listener mutation
-  [types.REMOVE_EVENT_LISTENER](state, {name, callback}) {
-    if (callback) {
-      const index = state.eventListener[name].findIndex((item) => item === callback)
-      state.eventListener[name].splice(index, 1)
-    } else {
-      state.eventListener[name] = []
-    }
-  },
+        const user = userJSON && plainToClassFromExist(new User(), JSON.parse(userJSON)) || null
+
+        if (user) state.user = user
+
+    },
+    // Forget mutation
+    [types.FORGET](state) {
+        state.user = new User()
+        localStorage.removeItem('user')
+    },
+    // Set UnauthenticatedPath mutation
+    [types.SET_UNAUTHENTICATED_PATH](state, val) {
+        state.unauthenticatedPath = val
+    },
+    // Add Event Listener mutation
+    [types.ADD_EVENT_LISTENER](state, { name, callback }) {
+        state.eventListener[name].push(callback)
+    },
+    // Remove Event Listener mutation
+    [types.REMOVE_EVENT_LISTENER](state, { name, callback }) {
+        if (callback) {
+            const index = state.eventListener[name].findIndex((item) => item === callback)
+            state.eventListener[name].splice(index, 1)
+        } else {
+            state.eventListener[name] = []
+        }
+    },
 }
 
 const namespaced: boolean = true
 export const auth: Module<AuthState, RootState> = {
-  namespaced,
-  state,
-  getters,
-  actions,
-  mutations,
+    namespaced,
+    state,
+    getters,
+    actions,
+    mutations,
 }

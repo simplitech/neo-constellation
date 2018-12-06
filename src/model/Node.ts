@@ -4,7 +4,7 @@ import {
   sleep,
   abort,
   Model,
-  accessKeyId,
+  getUser,
   ValidationRequired,
   ValidationMaxLength,
 } from '@/simpli'
@@ -737,8 +737,6 @@ export default class Node extends Model {
       this.containers.push(container)
     }
 
-    console.log(this.containers)
-
   }
 
   async sendCommand(commands: string[], silent?: boolean) {
@@ -767,7 +765,6 @@ export default class Node extends Model {
     const data = await ssm.sendCommand(payload).promise()
 
     if (data && data.Command) {
-      console.log(data.Command.CommandId)
       return data.Command
     }
   }
