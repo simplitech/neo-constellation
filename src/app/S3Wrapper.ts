@@ -65,4 +65,26 @@ export abstract class S3Wrapper extends Model {
           throw e
         }
     }
+
+    async delete() {
+
+        if (!this.$id) { abort(`Missing ID information`)}
+
+        try {
+
+            const s3 = AwsGlobal.s3
+
+            // Deletes the object
+            await s3.deleteObject({
+              Key: `${this.$prefix}${this.$id}${getExtension()}`,
+              Bucket: getUser().bucketName,
+            }).promise()
+
+            success(`${typeof this} deleted.`, undefined, false)
+
+          } catch (e) {
+            // TODO: Handle errors
+            throw e
+          }
+    }
 }

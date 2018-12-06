@@ -342,46 +342,49 @@ export default class DashboardView extends Vue {
         await network.get('H8u2vElHm')
         log('Network', network)
 
-        network.name = 'NetworkName'
-
-        await network.persist()
-
-        log('Network', network)
-
-        const inRule = new Rule()
-        inRule.source = '0.0.0.0/0'
-        inRule.portRangeStart = 8080
-        inRule.portRangeEnd = 8443
-
+        network.delete()
         const sg = new SecurityGroup()
-        sg.name = 'SecurityGroupTest1'
-        sg.inbound.push(inRule)
-        sg.networkId = network.$id
+        sg.name = ''
 
-        sg.delete()
+        // network.name = 'NetworkName'
 
-        network.securityGroups.push(sg)
+        // await network.persist()
 
-        await network.persist()
+        // log('Network', network)
 
-        log('Network', network)
+        // const inRule = new Rule()
+        // inRule.source = '0.0.0.0/0'
+        // inRule.portRangeStart = 8080
+        // inRule.portRangeEnd = 8443
 
-        const host = new Host()
-        host.$id = 'mdJFmFK3fg'
-        host.name = 'HostTest1'
-        host.region = Region.SA_EAST_1
-        host.size = Size.T2_NANO
-        host.availabilityZone = Zone.SA_EAST_1A
-        host.imageId = 'ami-07b14488da8ea02a0'
-        host.securityGroup = network.securityGroups[0]
+        // const sg = new SecurityGroup()
+        // sg.name = 'SecurityGroupTest1'
+        // sg.inbound.push(inRule)
+        // sg.networkId = network.$id
 
-        // await network.addHost(host)
+        // sg.delete()
 
-        await network.persist()
+        // network.securityGroups.push(sg)
 
-        log('Network', network)
+        // await network.persist()
 
-        await network.build()
+        // log('Network', network)
+
+        // const host = new Host()
+        // host.$id = 'mdJFmFK3fg'
+        // host.name = 'HostTest1'
+        // host.region = Region.SA_EAST_1
+        // host.size = Size.T2_NANO
+        // host.availabilityZone = Zone.SA_EAST_1A
+        // host.imageId = 'ami-07b14488da8ea02a0'
+        // host.securityGroup = network.securityGroups[0]
+
+        // // await network.addHost(host)
+
+        // await network.persist()
+
+        // log('Network', network)
+
 
 
     }

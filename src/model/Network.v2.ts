@@ -65,6 +65,8 @@ export default class NetworkV2 extends S3Wrapper {
             host.create()
         }
 
+        this.runningSince = new Date()
+
         this.persist()
     }
 
