@@ -132,7 +132,7 @@ export default class Host {
                         this.imageId = instance.ImageId || assign('imageId', this.imageId)
                         this.securityGroup = network.securityGroups.find((sg) => sg.hasRealSecurityGroup(
                             this.region!,
-                            instance!.SecurityGroups![0].GroupName!,
+                            instance!.SecurityGroups![0].GroupId!,
                             ) ,
                         ) || assign('securityGroup', this.securityGroup)
 
@@ -211,8 +211,8 @@ export default class Host {
                         Value: this.networkId!,
                     },
                     {
-                        Key: 'SecurityGroup',
-                        Value: this.securityGroup && this.securityGroup.name || '',
+                        Key: 'SecurityGroupId',
+                        Value: this.securityGroup && this.securityGroup.$id || '',
                     },
                     {
                         Key: 'Id',
