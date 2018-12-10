@@ -29,6 +29,8 @@ export default class SecurityGroup {
     @ResponseSerialize(Rule)
     outbound: Rule[] = []
 
+    private runningSince: Date | null = null
+
     hasRealSecurityGroup(region: Region, sgReal: string) {
         return !!this.realSecurityGroups.find( (sg) => sg[region] === sgReal)
     }
@@ -39,9 +41,11 @@ export default class SecurityGroup {
 
     }
 
+    get isRunning(): boolean {return !!this.runningSince}
+
     async create() {
         const regions = await AwsGlobal.regions()
-        const promises = []
+        let promises = []
         for (const region of regions) {
 
             AwsGlobal.switchRegion(region)
@@ -52,6 +56,17 @@ export default class SecurityGroup {
         await Promise.all(promises)
         log('RSGs', this.realSecurityGroups)
 
+        this.runningSince = new Date()
+
+        promises = []
+
+        // Creates real inbound rules
+        for (const rule of this.inbound) {
+            promises.push(this.createRealInboundRule(rule))
+        }
+
+        await Promise.all(promises)
+
     }
 
     async destroy() {
@@ -61,11 +76,13 @@ export default class SecurityGroup {
         for (const region of regions) {
 
             AwsGlobal.switchRegion(region)
-            promises.push(this.deleteSecurityGroup(new EC2(), region))
+            promises.push(this.deleteSecurityGroup(new EC2()))
 
         }
 
         await Promise.all(promises)
+
+        this.runningSince = null
     }
 
     async transformFromAWS() {
@@ -80,6 +97,46 @@ export default class SecurityGroup {
 
             AwsGlobal.switchRegion(region)
             promises.push(this.populateRealSecurityGroup(new EC2(), region))
+
+        }
+
+        await Promise.all(promises)
+
+    }
+
+    async addInboundRule(rule: Rule) {
+        this.inbound.push(rule)
+
+        if (this.isRunning) {
+            await this.createRealInboundRule(rule)
+        }
+
+    }
+
+    private async createRealInboundRule(rule: Rule) {
+        if (!this.isRunning) { abort(`Security Group is not running.`) }
+        if (!rule.portRangeStart) { abort(`Missing port information.`) }
+
+        const promises = []
+
+        for (const realSg of this.realSecurityGroups) {
+            let region = null
+            let id = null
+
+            for (const key in realSg) {
+                if (realSg.hasOwnProperty(key)) {
+                    region = key
+                    id = realSg[key]
+                }
+            }
+
+            if (!region || !id) { continue }
+
+            AwsGlobal.switchRegion(region as Region)
+
+            promises.push(
+                this.setSecurityGroupInboundRule(new EC2(), id, 'tcp', rule.portRangeStart!, rule.portRangeEnd ),
+            )
 
         }
 
@@ -150,7 +207,7 @@ export default class SecurityGroup {
         return data.Vpcs[0].VpcId
     }
 
-    private async deleteSecurityGroup(ec2: EC2, region: Region) {
+    private async deleteSecurityGroup(ec2: EC2) {
 
         try {
             const payload = {
@@ -162,5 +219,30 @@ export default class SecurityGroup {
         }
 
     }
+
+    private async setSecurityGroupInboundRule(
+        ec2: EC2, id: string, protocol: string, start: number, end: number | null) {
+
+        if (protocol !== 'tcp') abort('system.error.invalidProtocol')
+
+        const payload = {
+          GroupId: id,
+          IpPermissions: [
+            {
+              FromPort: start,
+              IpProtocol: protocol,
+              IpRanges: [
+                {
+                CidrIp: '0.0.0.0/0',
+                },
+              ],
+              ToPort: end || start,
+            },
+          ],
+        }
+
+        await ec2.authorizeSecurityGroupIngress(payload).promise()
+
+      }
 
 }
