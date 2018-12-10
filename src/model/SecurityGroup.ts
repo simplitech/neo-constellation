@@ -110,19 +110,38 @@ export default class SecurityGroup {
         try {
             const vpcId = await this.getDefaultVpc(ec2)
 
-            const payload = {
+            const data = await ec2.createSecurityGroup({
                 GroupName: this.name!,
                 Description: this.name!,
                 VpcId: vpcId,
-            }
-
-            const data = await ec2.createSecurityGroup(payload).promise()
+            }).promise()
 
             if (!data || !data.GroupId) {
                 throw new Error('Security Group not created.')
             }
 
             this.realSecurityGroups.push({[region]: data.GroupId})
+
+            await ec2.createTags({
+                Resources: [
+                    data.GroupId,
+                ],
+                Tags: [
+                    {
+                        Key: 'Name',
+                        Value: this.name || '',
+                    },
+                    {
+                        Key: 'Id',
+                        Value: this.$id || '',
+                    },
+                    {
+                        Key: 'NetworkId',
+                        Value: this.networkId || '',
+                    },
+                ],
+            }).promise()
+
         } catch (e) {
             if (e.code === 'InvalidGroup.Duplicate') return
             throw e
