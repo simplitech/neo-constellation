@@ -3,4 +3,4 @@
 
 import 'animate.css'
 import './registerServiceWorker'
-import 'font-awesome/css/font-awesome.css'
+import '@fortawesome/fontawesome-free/css/all.css'
