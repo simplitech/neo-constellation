@@ -1,6 +1,6 @@
 <template>
   <div id="app">
-    <transition name="fade-y-down" mode="out-in">
+    <transition name="blur" mode="out-in">
       <router-view/>
     </transition>
 
@@ -9,9 +9,7 @@
 </template>
 
 <style lang="scss">
-  $img-path: "./assets/img/";
-  $font-path: "./assets/font/";
-  @import "./scss/app";
+  @import "scss/app";
 </style>
 
 <script lang="ts">
