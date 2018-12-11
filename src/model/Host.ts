@@ -24,7 +24,7 @@ import Initializer from '@/app/Initializer'
 import { Zone } from '@/enum/Zone'
 import Network from './Network'
 import NetworkV2 from './Network.v2'
-import { uid } from 'simpli-ts-vue'
+import { uid } from '@/simpli'
 
 const RSA = require('node-rsa')
 

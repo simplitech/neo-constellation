@@ -54,7 +54,8 @@ export default class Node extends Model {
   }
 
   static bucketName() {
-    return _.lowerCase(accessKeyId()).replace(/ /g, '')
+    // return _.lowerCase(accessKeyId()).replace(/ /g, '')
+    return ''
   }
 
   /**

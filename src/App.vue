@@ -19,9 +19,9 @@
 
   @Component
   export default class App extends Vue {
-    @Action('auth/onSignIn') onSignIn?: Function
-    @Action('auth/onAuth') onAuth?: Function
-    @Action('auth/onSignOut') onSignOut?: Function
+    @Action('auth/onSignIn') onSignIn!: Function
+    @Action('auth/onAuth') onAuth!: Function
+    @Action('auth/onSignOut') onSignOut!: Function
     toastStyle: ToastStyle = ToastStyle.DARK
 
     // When the user or system signs in
@@ -40,9 +40,9 @@
     }
 
     created() {
-      this.onSignIn!(this.signInEvent)
-      this.onAuth!(this.authEvent)
-      this.onSignOut!(this.signOutEvent)
+      this.onSignIn(this.signInEvent)
+      this.onAuth(this.authEvent)
+      this.onSignOut(this.signOutEvent)
 
       this.$snotify.setDefaults({
         global: ToastGlobalConfig,

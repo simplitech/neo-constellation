@@ -1,3 +1,10 @@
+/**
+ * @file
+ * App bootstrap settings
+ *
+ * This file contains the settings before the app initialization
+ */
+
 import AWS, {EC2} from 'aws-sdk'
 import {$} from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'

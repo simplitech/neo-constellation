@@ -12,24 +12,26 @@
 
         <div class="des-w-400 tab-w-300 mob-w-full">
 
-          <form @submit.prevent="signIn(model)" class="panel spaced">
+          <form @submit.prevent="signIn(request)" class="panel spaced">
             <div class="panel-header">
               <div class="panel-title">
                 {{$t('view.login.title')}}
               </div>
             </div>
 
-            <await name="login">
-              <input-group
+            <await name="populateUser">
+              <input-text
                       type="password"
-                      v-model="model.accessKeyId"
+                      selectall
+                      v-model="request.accessKeyId"
               >{{$t('view.login.form.accessKey')}}
-              </input-group>
-              <input-group
+              </input-text>
+              <input-text
                       type="password"
-                      v-model="model.secretAccessKey"
+                      selectall
+                      v-model="request.secretAccessKey"
               >{{$t('view.login.form.accessSecret')}}
-              </input-group>
+              </input-text>
 
             </await>
 
@@ -50,20 +52,20 @@
 <script lang="ts">
   import {Component, Prop, Vue} from 'vue-property-decorator'
   import {Getter, Action} from 'vuex-class'
-  import Authentication from '@/model/Authentication'
+  import AuthRequest from '@/model/request/AuthRequest'
   import {pushByName} from '@/simpli'
 
   @Component
-  export default class LoginView extends Vue {
-    @Action('auth/signIn') signIn?: Function
-    @Action('auth/init') init?: Function
-    @Getter('auth/isLogged') isLogged?: string
+  export default class SignInView extends Vue {
+    @Action('auth/signIn') signIn!: Function
+    @Action('auth/init') init!: Function
+    @Getter('auth/isLogged') isLogged!: string
 
-    model = new Authentication()
+    request = new AuthRequest()
 
     created() {
-      this.init!()
-      if (this.isLogged!) pushByName('dashboard')
+      this.init()
+      if (this.isLogged) pushByName('dashboard')
     }
   }
 </script>

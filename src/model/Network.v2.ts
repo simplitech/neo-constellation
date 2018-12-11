@@ -17,13 +17,11 @@ import ConfigurationFile from '@/model/ConfigurationFile'
 import AwsGlobal from '@/model/AwsGlobal'
 import { plainToClass, classToPlain, serialize, deserialize } from 'class-transformer'
 import _ from 'lodash'
-import { success } from 'simpli-ts-vue'
+import { success } from '@/simpli'
 import { S3Wrapper } from '@/app/S3Wrapper'
 import Command from './Command'
 
 export default class NetworkV2 extends S3Wrapper {
-
-    $prefix = 'networks/'
 
     $id: string | null = null
     name: string | null = null
@@ -40,6 +38,8 @@ export default class NetworkV2 extends S3Wrapper {
 
     @ResponseSerialize(ConfigurationFile)
     configurationFiles: ConfigurationFile[] = []
+
+    protected readonly $prefix = 'networks/'
 
     get isRunning(): boolean {return !!this.runningSince}
 

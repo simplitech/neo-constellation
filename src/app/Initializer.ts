@@ -42,7 +42,6 @@ export default abstract class Initializer {
 
         // Initializes instance profile
         await this.initInstanceProfile()
-
     }
 
     private static async initBucket() {

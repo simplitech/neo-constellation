@@ -1,10 +1,3 @@
-import {
-    abort,
-    Model,
-    success,
-    bucketName,
-    getExtension,
-} from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
 import { plainToClassFromExist } from 'class-transformer'
 import { S3Wrapper } from '@/app/S3Wrapper'
@@ -30,8 +23,9 @@ export default class Collection<T extends S3Wrapper> {
             const s3 = AwsGlobal.s3
 
             const data = await s3.listObjectsV2({
-                Prefix: this.resource.$prefix,
-                Bucket: bucketName(),
+                // Prefix: this.resource.$prefix,
+                Bucket: '',
+                // Bucket: bucketName(),
             }).promise()
 
             // Contents is an array of object keys (names)
@@ -44,7 +38,8 @@ export default class Collection<T extends S3Wrapper> {
                         // Fetches each object
                         const objData = await s3.getObject({
                             Key: object.Key,
-                            Bucket: bucketName(),
+                            // Bucket: bucketName(),
+                            Bucket: '',
                         }).promise()
 
                         // Object body is an Uint8Array

@@ -5,8 +5,7 @@
   ],
   "linterOptions": {
     "exclude": [
-      "node_modules/**",
-      "ec2-api-node-js/**"
+      "node_modules/**"
     ]
   },
   "rules": {

@@ -1,5 +1,7 @@
 import {ID, Currency, Lang} from '@/simpli'
 import User from '@/model/User'
+import NetworkV2 from '@/model/Network.v2'
+import ApplicationBlueprint from '@/model/ApplicationBlueprint'
 
 /**
  * Root
@@ -16,8 +18,13 @@ export interface RootState {
  * Auth Module
  */
 export interface AuthState {
+  accessKeyId: string | null,
+  secretAccessKey: string | null,
   user: User,
-  unauthenticatedPath?: string,
+  networks: NetworkV2[],
+  appBlueprints: ApplicationBlueprint[],
+  // stacks: Stack[],
+  cachePath: string | null,
   eventListener: AuthEventListener,
 }
 

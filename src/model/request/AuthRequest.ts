@@ -1,6 +1,6 @@
-import {Model, ValidationRequired} from '@/simpli'
+import {Model, ValidationRequired} from '../../simpli'
 
-export default class Authentication extends Model {
+export default class AuthRequest extends Model {
   @ValidationRequired()
   accessKeyId: string = ''
 

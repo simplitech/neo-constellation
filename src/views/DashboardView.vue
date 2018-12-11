@@ -364,14 +364,12 @@ export default class DashboardView extends Vue {
 
         network = new NetworkV2()
 
-
         await network.get(networkId!)
         await network.build()*/
 
         const network = new NetworkV2()
         await network.get('sqWowgUEo')
         await network.delete()
-
 
     }
 

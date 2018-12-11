@@ -18,6 +18,11 @@ module.exports = {
 
   runtimeCompiler: true,
 
+  // tweak internal webpack configuration.
+  // see https://github.com/vuejs/vue-cli/blob/dev/docs/webpack.md
+  chainWebpack: config => {
+  },
+
   // configure webpack-dev-server behavior
   devServer: {
     open: process.platform === 'darwin',

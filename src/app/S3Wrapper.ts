@@ -12,7 +12,7 @@ import {plainToClassFromExist, classToPlainFromExist} from 'class-transformer'
 export abstract class S3Wrapper extends Model {
 
     abstract $id: string | null
-    abstract readonly $prefix: string
+    protected abstract readonly $prefix: string
 
     async get(id: String) {
 

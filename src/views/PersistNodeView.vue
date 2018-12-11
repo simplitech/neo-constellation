@@ -28,9 +28,9 @@
 
         <div class="row horiz">
           <div class="col weight-1">
-            <input-group type="text" v-model="model.name">
+            <input-text type="text" v-model="model.name">
               {{ $t('classes.Node.columns.name') }}
-            </input-group>
+            </input-text>
           </div>
 
           <div class="col weight-1">
@@ -132,7 +132,7 @@
 
     async mounted() {
       const fetch = async () => {
-        this.networkList = await AwsGlobal.networks()
+        // this.networkList = await AwsGlobal.networks()
         this.regionList = await AwsGlobal.regions()
         this.sizeList = await AwsGlobal.sizes()
         await this.regionEvent(this.model.region)

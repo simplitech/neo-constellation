@@ -15,7 +15,15 @@ export default abstract class AwsGlobal {
   static iam: IAM = new IAM()
   static s3: S3 = new S3()
   static ssm: SSM = new SSM()
-  static ddb: DocumentClient = new DynamoDB.DocumentClient()
+
+  /**
+   * Reset entities
+   */
+  static reset() {
+    AwsGlobal.ec2 = new EC2()
+    AwsGlobal.s3 = new S3()
+    AwsGlobal.iam = new IAM()
+  }
 
   /**
    * Switch AWS Region
@@ -23,17 +31,6 @@ export default abstract class AwsGlobal {
    */
   static switchRegion(region: Region) {
     AWS.config.update({region})
-  }
-
-  /**
-   * Returns networks
-   * @returns {Promise<string[]>}
-   */
-  static async networks(): Promise<string[]> {
-    const list = await Network.list()
-    return list
-      .filter((item: Network) => !!item.$id)
-      .map((item: Network) => item.$id!)
   }
 
   /**
