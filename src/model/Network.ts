@@ -20,6 +20,7 @@ import _ from 'lodash'
 import { success } from '@/simpli'
 import { S3Wrapper } from '@/app/S3Wrapper'
 import Command from './Command'
+import { State } from '@/enum/State'
 
 export default class Network extends S3Wrapper {
 
@@ -65,7 +66,14 @@ export default class Network extends S3Wrapper {
 
             await Promise.all(promises)
 
-            // TODO: waitFor all instances to be terminated
+            promises = []
+
+            // Waiting for EC2 instances to be terminated
+            for (const host of this.hosts) {
+                promises.push(host.waitFor(State.TERMINATED))
+            }
+
+            await Promise.all(promises)
 
             promises = []
 
@@ -130,8 +138,23 @@ export default class Network extends S3Wrapper {
         this.persist()
     }
 
-    async addSecurityGroup() {
-        // Adds a security group
+    async addSecurityGroup(securityGroup: SecurityGroup) {
+        if (this.securityGroups.find( (sg) => sg.$id === securityGroup.$id)) {
+            abort(`Conflicting security group ID`)
+        }
+
+        if (!securityGroup.$id) {
+            securityGroup.$id = uid()
+        }
+
+        securityGroup.networkId = this.$id
+
+        this.securityGroups.push(securityGroup)
+
+        if (this.isRunning) {
+            this.synchronizeSecurityGroups()
+        }
+
         this.persist()
     }
 

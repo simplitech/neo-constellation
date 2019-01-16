@@ -250,6 +250,26 @@ export default class Host {
 
     }
 
+    async waitFor(state: State) {
+        if (!this.instanceId) { abort(`Missing instance ID information.`) }
+
+        this.switchRegion()
+
+        switch (state) {
+
+            case State.TERMINATED:
+
+                await this.ec2.waitFor('instanceTerminated', {
+                    InstanceIds: [this.instanceId!],
+                }).promise()
+
+                break
+
+            default:
+                return
+        }
+    }
+
     private async getImageId(imageName?: string) {
         this.switchRegion()
 
