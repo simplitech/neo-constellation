@@ -280,6 +280,8 @@ import HostEntry from '@/model/HostEntry'
 import User from '@/model/User'
 import Initializer from '@/app/Initializer'
 import { Zone } from '@/enum/Zone'
+import ApplicationBlueprint from '@/model/ApplicationBlueprint'
+import Stack from '@/model/Stack'
 
 @Component
 export default class DashboardView extends Vue {
@@ -366,10 +368,6 @@ export default class DashboardView extends Vue {
 
         await network.get(networkId!)
         await network.build()*/
-
-        const network = new NetworkV2()
-        await network.get('sqWowgUEo')
-        await network.delete()
 
     }
 

@@ -7,7 +7,8 @@ import {
     getExtension,
 } from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
-import {plainToClassFromExist, classToPlainFromExist} from 'class-transformer'
+import {plainToClass, plainToClassFromExist, classToPlainFromExist, Type} from 'class-transformer'
+import NetworkV2 from '@/model/Network.v2'
 
 export abstract class S3Wrapper extends Model {
 
@@ -86,5 +87,44 @@ export abstract class S3Wrapper extends Model {
             // TODO: Handle errors
             throw e
           }
+    }
+
+    async list(type: typeof S3Wrapper) {
+
+        try {
+
+            const s3 = AwsGlobal.s3
+
+            const data = await s3.listObjectsV2({
+                Bucket: getUser().bucketName,
+                Prefix: this.$prefix,
+            }).promise()
+
+            success(`Listing ${typeof this}...`, undefined, false)
+
+            const idList = data.Contents
+                && data.Contents
+                    .filter((c) => !!c.Key)
+                    .map((c) => {
+                        return c.Key!
+                            .replace(`${this.$prefix}`, '')
+                            .replace(`${getExtension()}`, '')
+                    }) || undefined
+
+            if (!idList) return undefined
+
+            const objList: this[] = []
+
+            for (const id of idList) {
+                const entity = new (type as any)()
+                objList.push(await entity.get(id))
+            }
+
+            return objList
+
+        } catch (e) {
+            // TODO: Handle errors
+            throw e
+        }
     }
 }

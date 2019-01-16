@@ -80,6 +80,10 @@ export default class NetworkV2 extends S3Wrapper {
         super.delete()
     }
 
+    async list(): Promise<this[]|undefined> {
+        return await super.list(NetworkV2)
+    }
+
     async build() {
         if (this.isRunning) { abort('This network is already running') }
 
