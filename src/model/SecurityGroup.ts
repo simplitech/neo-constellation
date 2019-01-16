@@ -116,6 +116,7 @@ export default class SecurityGroup {
     private async createRealInboundRule(rule: Rule) {
         if (!this.isRunning) { abort(`Security Group is not running.`) }
         if (!rule.portRangeStart) { abort(`Missing port information.`) }
+        if (!rule.source) { abort(`Missing source information.`) }
 
         const promises = []
 
@@ -135,7 +136,9 @@ export default class SecurityGroup {
             AwsGlobal.switchRegion(region as Region)
 
             promises.push(
-                this.setSecurityGroupInboundRule(new EC2(), id, 'tcp', rule.portRangeStart!, rule.portRangeEnd ),
+                this.setSecurityGroupInboundRule(
+                    new EC2(), id, 'tcp', rule.source!, rule.portRangeStart!, rule.portRangeEnd,
+                ),
             )
 
         }
@@ -186,15 +189,15 @@ export default class SecurityGroup {
                 Tags: [
                     {
                         Key: 'Name',
-                        Value: this.name || '',
+                        Value: this.name!,
                     },
                     {
                         Key: 'Id',
-                        Value: this.$id || '',
+                        Value: this.$id!,
                     },
                     {
                         Key: 'NetworkId',
-                        Value: this.networkId || '',
+                        Value: this.networkId!,
                     },
                 ],
             }).promise()
@@ -240,7 +243,7 @@ export default class SecurityGroup {
     }
 
     private async setSecurityGroupInboundRule(
-        ec2: EC2, id: string, protocol: string, start: number, end: number | null) {
+        ec2: EC2, id: string, protocol: string, source: string, start: number, end: number | null) {
 
         if (protocol !== 'tcp') abort('system.error.invalidProtocol')
 
@@ -252,7 +255,7 @@ export default class SecurityGroup {
               IpProtocol: protocol,
               IpRanges: [
                 {
-                CidrIp: '0.0.0.0/0',
+                CidrIp: source,
                 },
               ],
               ToPort: end || start,
