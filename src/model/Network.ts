@@ -20,6 +20,8 @@ import _ from 'lodash'
 import { success } from '@/simpli'
 import { S3Wrapper } from '@/app/S3Wrapper'
 import Command from './Command'
+import { State } from '@/enum/State'
+import { Log } from '@/helpers/logger.helper'
 
 export default class Network extends S3Wrapper {
 
@@ -58,6 +60,8 @@ export default class Network extends S3Wrapper {
         if (this.isRunning) {
             let promises = []
 
+            Log(0, 'Terminating hosts...')
+
             // Terminating EC2 instances
             for (const host of this.hosts) {
                 promises.push(host.terminate())
@@ -65,16 +69,31 @@ export default class Network extends S3Wrapper {
 
             await Promise.all(promises)
 
-            // TODO: waitFor all instances to be terminated
+            promises = []
+
+            Log(0, 'Waiting for hosts to be terminated...')
+
+            // Waiting for EC2 instances to be terminated
+            for (const host of this.hosts) {
+                promises.push(host.waitFor(State.TERMINATED))
+            }
+
+            Log(0, 'All hosts terminated.')
+
+            await Promise.all(promises)
 
             promises = []
 
+            Log(0, 'Destroying security groups...')
             // Deleting security groups
             for (const securityGroup of this.securityGroups) {
                 promises.push(securityGroup.destroy())
             }
 
             await Promise.all(promises)
+
+            Log(0, 'Network deleted.')
+
         }
 
         super.delete()
@@ -130,8 +149,23 @@ export default class Network extends S3Wrapper {
         this.persist()
     }
 
-    async addSecurityGroup() {
-        // Adds a security group
+    async addSecurityGroup(securityGroup: SecurityGroup) {
+        if (this.securityGroups.find( (sg) => sg.$id === securityGroup.$id)) {
+            abort(`Conflicting security group ID`)
+        }
+
+        if (!securityGroup.$id) {
+            securityGroup.$id = uid()
+        }
+
+        securityGroup.networkId = this.$id
+
+        this.securityGroups.push(securityGroup)
+
+        if (this.isRunning) {
+            this.synchronizeSecurityGroups()
+        }
+
         this.persist()
     }
 

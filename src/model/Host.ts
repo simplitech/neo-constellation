@@ -111,25 +111,41 @@ export default class Host {
 
                     if (instance) {
 
-                        this.$id = instance.Tags && instance.Tags.map(
-                            (t) => t.Key && t.Key === 'Id' && t.Value,
-                            )[0] || assign('\$id', this.$id)
+                        // ID
+                        this.$id = instance.Tags && instance.Tags
+                            .filter( (t) => t.Key && t.Key === 'Id')
+                            .map( (t) =>  t.Value)[0]
+                            || assign('\$id', this.$id)
+
+                        // Instance ID
                         this.instanceId = instance.InstanceId || assign('instanceId', this.instanceId)
-                        this.networkId = instance.Tags && instance.Tags.map(
-                            (t) => t.Key && t.Key === 'idNetwork' && t.Value,
-                        )[0] || assign('networkId', this.networkId)
-                        this.name = instance.Tags && instance.Tags.map(
-                            (t) => t.Key && t.Key === 'Name' && t.Value,
-                        )[0] || assign('name', this.name)
+
+                        this.networkId = instance.Tags && instance.Tags
+                            .filter( (t) => t.Key && t.Key === 'idNetwork')
+                            .map( (t) =>  t.Value)[0]
+                            || assign('networkId', this.networkId)
+
+                        this.name = instance.Tags && instance.Tags
+                            .filter( (t) => t.Key && t.Key === 'Name')
+                            .map( (t) =>  t.Value)[0]
+                            || assign('name', this.name)
+
                         this.state = instance.State && instance.State.Code || assign('state', this.state)
+
                         // TODO: awsHost.cpuUsage
+
                         // TODO: awsHost.ramUsage
+
                         this.size = instance.InstanceType as Size || assign('size', this.size)
+
                         this.region = this.region
+
                         this.availabilityZone = instance.Placement
                             && instance.Placement.AvailabilityZone as Zone
                             || assign('availabilityZone', this.availabilityZone)
+
                         this.imageId = instance.ImageId || assign('imageId', this.imageId)
+
                         this.securityGroup = network.securityGroups.find((sg) => sg.hasRealSecurityGroup(
                             this.region!,
                             instance!.SecurityGroups![0].GroupId!,
@@ -248,6 +264,26 @@ export default class Host {
             ],
         }).promise()
 
+    }
+
+    async waitFor(state: State) {
+        if (!this.instanceId) { abort(`Missing instance ID information.`) }
+
+        this.switchRegion()
+
+        switch (state) {
+
+            case State.TERMINATED:
+
+                await this.ec2.waitFor('instanceTerminated', {
+                    InstanceIds: [this.instanceId!],
+                }).promise()
+
+                break
+
+            default:
+                return
+        }
     }
 
     private async getImageId(imageName?: string) {
