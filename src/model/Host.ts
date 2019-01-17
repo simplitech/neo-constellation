@@ -22,8 +22,8 @@ import AwsGlobal from '@/model/AwsGlobal'
 import { EC2, S3, SSM, IAM, CloudWatchLogs as CWL } from 'aws-sdk'
 import Initializer from '@/app/Initializer'
 import { Zone } from '@/enum/Zone'
+import NetworkOld from './NetworkOld'
 import Network from './Network'
-import NetworkV2 from './Network.v2'
 import { uid } from '@/simpli'
 
 const RSA = require('node-rsa')
@@ -81,7 +81,7 @@ export default class Host {
 
     private ec2 = new EC2()
 
-    async transformFromAWS(network: NetworkV2) {
+    async transformFromAWS(network: Network) {
 
         const { switchRegion } = AwsGlobal
 

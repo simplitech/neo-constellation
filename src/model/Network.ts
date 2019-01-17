@@ -1,90 +1,166 @@
-import {$, Model, ValidationRequired, abort} from '@/simpli'
-import {EC2} from 'aws-sdk'
-import {Region} from '@/enum/Region'
+import {
+    $,
+    uid,
+    info,
+    sleep,
+    abort,
+    Model,
+    getUser,
+    ResponseSerialize,
+    ValidationRequired,
+    ValidationMaxLength,
+} from '@/simpli'
+import Host from '@/model/Host'
+import SecurityGroup from '@/model/SecurityGroup'
+import Dashboard from '@/model/Dashboard'
+import ConfigurationFile from '@/model/ConfigurationFile'
 import AwsGlobal from '@/model/AwsGlobal'
-import Node from '@/model/Node'
+import { plainToClass, classToPlain, serialize, deserialize } from 'class-transformer'
 import _ from 'lodash'
+import { success } from '@/simpli'
+import { S3Wrapper } from '@/app/S3Wrapper'
+import Command from './Command'
 
-export default class Network extends Model {
+export default class Network extends S3Wrapper {
 
-  static async list() {
-    const result: Network[] = []
+    $id: string | null = null
+    name: string | null = null
+    runningSince: Date | null = null
 
-    const fetch = async () => {
-      const allNodes = await Node.list()
+    @ResponseSerialize(SecurityGroup)
+    securityGroups: SecurityGroup[] = []
 
-      const networkObj = _.groupBy(allNodes, 'idNetwork')
+    @ResponseSerialize(Host)
+    hosts: Host[] = []
 
-      for (const idNetwork in networkObj) {
-        if (idNetwork) {
-          const network = new Network()
-          network.$id = idNetwork
-          network.nodes = networkObj[idNetwork]
-          result.push(network)
+    @ResponseSerialize(Dashboard)
+    dashboards: Dashboard[] = []
+
+    @ResponseSerialize(ConfigurationFile)
+    configurationFiles: ConfigurationFile[] = []
+
+    protected readonly $prefix = 'networks/'
+
+    get isRunning(): boolean {return !!this.runningSince}
+
+    async get(id: String) {
+        const network = await super.get(id)
+
+        if (this.isRunning) {
+            await network.synchronizeHosts()
         }
-      }
+
+        return network
     }
 
-    await $.await.run(fetch, 'networks')
+    async delete() {
+        // If network is running, we need to also delete AWS resources
+        if (this.isRunning) {
+            let promises = []
 
-    return result
-  }
+            // Terminating EC2 instances
+            for (const host of this.hosts) {
+                promises.push(host.terminate())
+            }
 
-  static manageStateFromList(networks: Network[]) {
-    for (const network of networks) {
-      for (const node of network.nodes) {
-        const fetch = async () => await node.manageState()
-        $.await.run(fetch, `node_${node.$id}`)
-      }
-    }
-  }
+            await Promise.all(promises)
 
-  $id: string | null = null
+            // TODO: waitFor all instances to be terminated
 
-  name: string | null = null
+            promises = []
 
-  nodes: Node[] = []
+            // Deleting security groups
+            for (const securityGroup of this.securityGroups) {
+                promises.push(securityGroup.destroy())
+            }
 
-  get groupName() {
-    return `network-${this.$id}-sg`
-  }
+            await Promise.all(promises)
+        }
 
-  async get(idNetwork: string) {
-    this.$id = idNetwork
-    this.nodes = await Node.list(idNetwork)
-  }
-
-  async destroy() {
-    const {$id, nodes, groupName} = this
-    const {regions, switchRegion} = AwsGlobal
-
-    if (!$id) abort('system.error.fieldNotDefined')
-    if (nodes && nodes.length > 0) abort('system.error.networkNotEmpty')
-
-    const payload = {
-      GroupName: groupName,
+        super.delete()
     }
 
-    // Deletes security groups across regions
-    console.log(`Destroying ${$id}...`)
-
-    // List of promises
-    const promises = []
-
-    const listRegion = await regions()
-
-    // Scan all AWS regions
-    try {
-      for (const region of listRegion) {
-        switchRegion(region)
-        promises.push(new EC2().deleteSecurityGroup(payload).promise())
-      }
-      await Promise.all(promises)
-
-    } catch (e) {
-      if (e.code !== 'InvalidGroup.NotFound') throw e
+    async list(): Promise<this[]|undefined> {
+        return await super.list(Network) || []
     }
 
-  }
+    async build() {
+        if (this.isRunning) { abort('This network is already running') }
 
+        /* This method will in fact create Real Security Groups, EC2 instances
+        and prepare the instances to have their logs read
+        */
+
+        let promises = []
+        for (const securityGroup of this.securityGroups) {
+            promises.push(securityGroup.create())
+        }
+        await Promise.all(promises)
+
+        promises = []
+        for (const host of this.hosts) {
+            promises.push(host.create())
+        }
+        await Promise.all(promises)
+
+        this.runningSince = new Date()
+
+        this.persist()
+    }
+
+    async addHost(host: Host) {
+        if (this.hosts.find( (h) => h.$id === host.$id)) {
+            abort(`Conflicting host ID`)
+        }
+
+        if (!host.$id) {
+            host.$id = uid()
+        }
+
+        host.networkId = this.$id
+
+        this.hosts.push(host)
+
+        if (this.isRunning) {
+            // If the network is already running, newly created hosts will be instantiated right away
+            this.synchronizeHosts()
+        } else {
+            // Otherwise, information will be stored in S3, but nothing will be actually running
+        }
+        this.persist()
+    }
+
+    async addSecurityGroup() {
+        // Adds a security group
+        this.persist()
+    }
+
+    async addDashboard() {
+        // Adds a dashboard
+        this.persist()
+    }
+
+    async addConfigurationFile() {
+        // Adds a configuration file
+        this.persist()
+    }
+
+    async synchronizeHosts() {
+        for (const host of this.hosts) {
+
+            await host.transformFromAWS(this)
+        }
+
+        this.persist()
+    }
+
+    async synchronizeSecurityGroups() {
+        for (const securityGroup of this.securityGroups) {
+            await securityGroup.transformFromAWS()
+        }
+
+        for (const hostSecurityGroup of this.hosts.map( (h) => h.securityGroup)) {
+            if (hostSecurityGroup) await hostSecurityGroup.transformFromAWS()
+        }
+    }
 }

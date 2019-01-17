@@ -66,7 +66,7 @@ export default {
       invalidDate: 'The field \'{0}\' has not valid date',
       invalidProtocol: 'Not a valid protocol',
       timeOut: 'Request timed out',
-      networkNotEmpty: 'Network is not empty',
+      networkNotEmpty: 'NetworkOld is not empty',
       passwordLength: 'The password must have between {0} and {1} characters',
       samePassword: 'The fields password must match',
       invalidPassword: 'Invalid password',
@@ -227,7 +227,7 @@ export default {
     persistNode: {
       title: 'Create Node',
       titleAlt: 'Edit Node',
-      newNetwork: 'New Network',
+      newNetwork: 'New NetworkOld',
     },
     cmd: {
       title: 'Commands',
@@ -248,7 +248,7 @@ export default {
       title: 'Node',
       columns: {
         $id: 'ID',
-        idNetwork: 'Network ID',
+        idNetwork: 'NetworkOld ID',
         idImage: 'OS Image ID',
         idSecurityGroup: 'SG ID',
         name: 'Name',
@@ -283,11 +283,11 @@ export default {
       },
     },
     Network: {
-      title: 'Network',
+      title: 'NetworkOld',
       columns: {
         $id: 'ID',
-        name: 'Network name',
-        nodes: 'Network nodes',
+        name: 'NetworkOld name',
+        nodes: 'NetworkOld nodes',
       },
     },
     Container: {

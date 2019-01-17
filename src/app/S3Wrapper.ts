@@ -8,7 +8,7 @@ import {
 } from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
 import {plainToClass, plainToClassFromExist, classToPlainFromExist, Type} from 'class-transformer'
-import NetworkV2 from '@/model/Network.v2'
+import Network from '@/model/Network'
 
 export abstract class S3Wrapper extends Model {
 

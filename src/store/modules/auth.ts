@@ -6,7 +6,7 @@ import User from '@/model/User'
 import AuthRequest from '@/model/request/AuthRequest'
 import AwsGlobal from '@/model/AwsGlobal'
 import Initializer from '@/app/Initializer'
-import NetworkV2 from '@/model/Network.v2'
+import Network from '@/model/Network'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
 import Stack from '@/model/Stack'
 
@@ -146,7 +146,7 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param commit
    */
   syncNetworks: async ({state, commit}) => {
-    commit('POPULATE_NETWORKS', await new NetworkV2().list())
+    commit('POPULATE_NETWORKS', await new Network().list())
   },
 
   /**
@@ -217,7 +217,7 @@ const mutations: MutationTree<AuthState> = {
   },
 
   // Populate networks mutation
-  POPULATE_NETWORKS(state, networks: NetworkV2[]) {
+  POPULATE_NETWORKS(state, networks: Network[]) {
     state.networks = networks
   },
 

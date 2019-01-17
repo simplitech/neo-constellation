@@ -261,8 +261,8 @@
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator'
 import { Getter, Action } from 'vuex-class'
+import NetworkOld from '@/model/NetworkOld'
 import Network from '@/model/Network'
-import NetworkV2 from '@/model/Network.v2'
 import Host from '@/model/Host'
 import Node from '@/model/Node'
 import Rule from '@/model/Rule'
@@ -288,20 +288,20 @@ export default class DashboardView extends Vue {
   @Getter('auth/user')
   user?: User
 
-  networks: Network[] = []
+  networks: NetworkOld[] = []
 
   async mounted() {
     await this.populate()
   }
 
   async populate() {
-    this.networks = await Network.list()
+    this.networks = await NetworkOld.list()
 
     // Waiting the next DOM render
     await sleep(500)
 
     // Verifies all the floating states and prepares them to the state
-    Network.manageStateFromList(this.networks)
+    NetworkOld.manageStateFromList(this.networks)
   }
 
   async sendCommand(node: Node) {
@@ -325,13 +325,13 @@ export default class DashboardView extends Vue {
     async test() {
         /*let networkId: String | null
 
-        let network = new NetworkV2()
+        let network = new Network()
 
         network.name = 'NetworkName'
 
         await network.persist()
 
-        log('Network', network)
+        log('NetworkOld', network)
         networkId = network.$id
 
         const inRule = new Rule()
@@ -348,7 +348,7 @@ export default class DashboardView extends Vue {
 
         await network.persist()
 
-        log('Network', network)
+        log('NetworkOld', network)
 
         const host = new Host()
         host.name = 'HostTest1'
@@ -362,9 +362,9 @@ export default class DashboardView extends Vue {
 
         await network.persist()
 
-        log('Network', network)
+        log('NetworkOld', network)
 
-        network = new NetworkV2()
+        network = new Network()
 
         await network.get(networkId!)
         await network.build()*/

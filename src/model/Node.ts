@@ -19,7 +19,7 @@ import {Zone} from '@/enum/Zone'
 import {State} from '@/enum/State'
 import {Stream} from '@/enum/Stream'
 import AwsGlobal from '@/model/AwsGlobal'
-import Network from '@/model/Network'
+import NetworkOld from '@/model/NetworkOld'
 import Container from '@/model/Container'
 import StreamEvent from '@/model/StreamEvent'
 import { Command } from 'aws-sdk/clients/ssm'
@@ -147,7 +147,7 @@ export default class Node extends Model {
   // Instance ID
   idInstance: string | null = null
 
-  // Network ID
+  // NetworkOld ID
   idNetwork: string | null = null
 
   // Image ID
@@ -371,7 +371,7 @@ export default class Node extends Model {
 
     await ec2.waitFor('instanceTerminated', payload).promise()
 
-    const network = new Network()
+    const network = new NetworkOld()
     await network.get(idNetwork!)
 
     if (!network.nodes || network.nodes.length <= 0) {
