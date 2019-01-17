@@ -9,7 +9,7 @@ export default class Stack extends S3Wrapper {
     description: string | null = null
 
     async list(): Promise<this[]|undefined> {
-        return await super.list(Stack)
+        return await super.list(Stack) || []
     }
 
 }

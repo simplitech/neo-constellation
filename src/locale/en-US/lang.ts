@@ -118,6 +118,7 @@ export default {
 
   app: {
     title: 'Neo Constellation',
+    subtitle: 'Console',
     anonymous: 'Anonymous',
     logout: 'Logout',
     turnOn: 'Turn On',

@@ -5,6 +5,7 @@
  * This file contains the settings before the app initialization
  */
 
+import Vue from 'vue'
 import AWS, {EC2} from 'aws-sdk'
 import {$} from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
@@ -25,6 +26,8 @@ import MoonLoader from 'vue-spinner/src/MoonLoader.vue'
 import RingLoader from 'vue-spinner/src/RingLoader.vue'
 import BounceLoader from 'vue-spinner/src/BounceLoader.vue'
 import DotLoader from 'vue-spinner/src/DotLoader.vue'
+
+Vue.config.productionTip = false
 
 $.await.addLoader('PulseLoader', PulseLoader)
 $.await.addLoader('GridLoader', GridLoader)

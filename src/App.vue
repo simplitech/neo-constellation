@@ -15,9 +15,14 @@
 <script lang="ts">
   import { Component, Vue, Watch } from 'vue-property-decorator'
   import {Action, Getter} from 'vuex-class'
-  import {ToastDefaultConfig, ToastGlobalConfig, ToastStyle} from '@/simpli'
+  import {$, ToastDefaultConfig, ToastGlobalConfig, ToastStyle} from '@/simpli'
 
-  @Component
+  const metaInfo = () => ({
+    title: $.t('app.subtitle'),
+    titleTemplate: `%s | ${$.t('app.title')}`,
+  })
+
+  @Component({metaInfo})
   export default class App extends Vue {
     @Action('auth/onSignIn') onSignIn!: Function
     @Action('auth/onAuth') onAuth!: Function

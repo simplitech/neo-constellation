@@ -1,6 +1,6 @@
 import {lowerCase} from 'lodash'
 import AwsGlobal from '@/model/AwsGlobal'
-import {$, Model, errorAndPush} from '@/simpli'
+import {$, Model, abort, signOut} from '@/simpli'
 
 export default class User extends Model {
 
@@ -33,11 +33,14 @@ export default class User extends Model {
         const resp = await AwsGlobal.iam.getUser().promise()
         this.username = resp.User.UserName
       } catch (e) {
+        signOut()
         if (e.code === 'InvalidClientTokenId') {
-          errorAndPush('system.error.invalidClientTokenId', '/sign-in', 'httpResponse.403')
+          abort('system.error.invalidClientTokenId', 'httpResponse.403')
         } else if (e.code === 'CredentialsError') {
-          errorAndPush('system.error.invalidCredentials', '/sign-in', 'httpResponse.401')
-        } else errorAndPush('system.error.unexpectedError', '/sign-in')
+          abort('system.error.invalidCredentials', 'httpResponse.401')
+        } else {
+          abort('system.error.unexpectedError')
+        }
         throw e
       }
     }

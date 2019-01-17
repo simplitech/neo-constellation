@@ -14,7 +14,7 @@ export default class ApplicationBlueprint extends S3Wrapper {
     runCommands: string[] = []
 
     async list(): Promise<this[]|undefined> {
-        return await super.list(ApplicationBlueprint)
+        return await super.list(ApplicationBlueprint) || []
     }
 
 }

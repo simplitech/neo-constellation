@@ -1,24 +1,26 @@
 import {ActionTree, GetterTree, Module, MutationTree} from 'vuex'
+import AWS from 'aws-sdk'
 import {AuthState, RootState} from '@/types/store'
-import {$, push, successAndPush, errorAndPush, infoAndPush} from '@/simpli'
+import {$, push, error} from '@/simpli'
 import User from '@/model/User'
 import AuthRequest from '@/model/request/AuthRequest'
-import AWS, {EC2, DynamoDB, S3} from 'aws-sdk'
-import IAM from 'aws-sdk/clients/iam'
 import AwsGlobal from '@/model/AwsGlobal'
-import {plainToClass, classToPlain, plainToClassFromExist} from 'class-transformer'
 import Initializer from '@/app/Initializer'
 import NetworkV2 from '@/model/Network.v2'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
+import Stack from '@/model/Stack'
 
 // initial state
 const state: AuthState = {
   accessKeyId: null,
   secretAccessKey: null,
+
   user: new User(),
+
   networks: [],
   appBlueprints: [],
-  // stacks: Stack[],
+  stacks: [],
+
   cachePath: null,
   eventListener: {
     signIn: [],
@@ -32,7 +34,13 @@ const getters: GetterTree<AuthState, RootState> = {
   isLogged: ({accessKeyId, secretAccessKey}) => !!accessKeyId && !!secretAccessKey,
   accessKeyId: ({accessKeyId}) => accessKeyId,
   secretAccessKey: ({secretAccessKey}) => secretAccessKey,
+
   user: ({user}) => user,
+
+  networks: ({networks}) => networks,
+  appBlueprints: ({appBlueprints}) => appBlueprints,
+  stacks: ({stacks}) => stacks,
+
   cachePath: ({cachePath}) => cachePath,
 }
 
@@ -58,7 +66,7 @@ const actions: ActionTree<AuthState, RootState> = {
     localStorage.setItem('accessKeyId', accessKeyId)
     localStorage.setItem('secretAccessKey', secretAccessKey)
 
-    commit('POPULATE', user)
+    commit('POPULATE_USER', user)
 
     Initializer.init()
 
@@ -90,12 +98,13 @@ const actions: ActionTree<AuthState, RootState> = {
       // Populate user from AWS IAM
       await user.populate()
 
-      commit('POPULATE', user)
+      commit('POPULATE_USER', user)
 
       state.eventListener.auth.forEach((item) => item())
     } else {
+      error('system.error.unauthorized')
       commit('SET_CACHE_PATH', $.route.path)
-      dispatch('signOut', true)
+      dispatch('signOut')
     }
   },
 
@@ -104,12 +113,12 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param commit
    * @param getters
    */
-  init: async ({commit, getters}) => {
+  init: ({commit, getters}) => {
     commit('POPULATE_CREDENTIALS')
 
-    const {isLogged, accessKeyId, secretAccessKey} = getters
+    const {accessKeyId, secretAccessKey} = getters
 
-    if (isLogged) {
+    if (getters.isLogged) {
       AWS.config.update({accessKeyId, secretAccessKey})
       AwsGlobal.reset()
     }
@@ -119,15 +128,13 @@ const actions: ActionTree<AuthState, RootState> = {
    * Sign out account
    * @param state
    * @param commit
-   * @param showError
    */
-  signOut: ({state, commit}, showError: boolean = false) => {
+  signOut: ({state, commit}) => {
     const accessKeyId = undefined
     const secretAccessKey = undefined
     AWS.config.update({accessKeyId, secretAccessKey})
 
-    if (showError) errorAndPush('system.error.unauthorized', '/sign-in')
-    else push('/sign-in')
+    push('/sign-in')
 
     commit('FORGET')
     state.eventListener.signOut.forEach((item) => item())
@@ -138,8 +145,8 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    * @param commit
    */
-  syncNetworks: ({state, commit}) => {
-    // await NetworkV2.list()
+  syncNetworks: async ({state, commit}) => {
+    commit('POPULATE_NETWORKS', await new NetworkV2().list())
   },
 
   /**
@@ -147,8 +154,8 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    * @param commit
    */
-  syncAppBlueprints: ({state, commit}) => {
-    // await ApplicationBlueprint.list()
+  syncAppBlueprints: async ({state, commit}) => {
+    commit('POPULATE_APP_BLUEPRINTS', await new ApplicationBlueprint().list())
   },
 
   /**
@@ -156,8 +163,8 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    * @param commit
    */
-  syncStacks: ({state, commit}) => {
-    // await Stacks.list()
+  syncStacks: async ({state, commit}) => {
+    commit('POPULATE_STACKS', await new Stack().list())
   },
 
   /**
@@ -205,15 +212,39 @@ const mutations: MutationTree<AuthState> = {
   },
 
   // Populate user mutation
-  POPULATE(state, user: User) {
+  POPULATE_USER(state, user: User) {
     state.user = user
+  },
+
+  // Populate networks mutation
+  POPULATE_NETWORKS(state, networks: NetworkV2[]) {
+    state.networks = networks
+  },
+
+  // Populate appBlueprints mutation
+  POPULATE_APP_BLUEPRINTS(state, appBlueprints: ApplicationBlueprint[]) {
+    state.appBlueprints = appBlueprints
+  },
+
+  // Populate stacks mutation
+  POPULATE_STACKS(state, stacks: Stack[]) {
+    state.stacks = stacks
   },
 
   // Forget mutation
   FORGET(state) {
+    state.accessKeyId = null
+    state.secretAccessKey = null
+
     state.user = new User()
+
+    state.networks = []
+    state.appBlueprints = []
+    state.stacks = []
+
     localStorage.removeItem('accessKeyId')
     localStorage.removeItem('secretAccessKey')
+
     AWS.config.update({})
   },
 

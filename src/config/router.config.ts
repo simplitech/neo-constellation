@@ -7,6 +7,7 @@
  * See https://router.vuejs.org/guide/#javascript
  * This configuration will be set in @/bootstrap/app.ts
  */
+import {RouterOptions} from 'vue-router'
 
 import DefaultPanelLayout from '@/views/layouts/DefaultPanelLayout.vue'
 import SignInView from '@/views/SignInView.vue'
@@ -17,7 +18,7 @@ import LogDashboard from '@/views/LogDashboard.vue'
 /**
  * VUE Router Configuration
  */
-export const router = {
+export const router: RouterOptions = {
   routes: [
     {
       path: '/sign-in',

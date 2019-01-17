@@ -3,7 +3,7 @@
 
     <div class="app-layout h-full">
 
-      <div class="verti weight-1 items-center p-10">
+      <div class="verti h-full weight-1 items-center p-10">
         <div class="m-10">
           <a href="https://neo.org/" target="_blank">
             <img src="../assets/img/neo@3x.png" alt="NEO Constallation" height="80">

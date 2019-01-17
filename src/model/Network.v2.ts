@@ -81,7 +81,7 @@ export default class NetworkV2 extends S3Wrapper {
     }
 
     async list(): Promise<this[]|undefined> {
-        return await super.list(NetworkV2)
+        return await super.list(NetworkV2) || []
     }
 
     async build() {

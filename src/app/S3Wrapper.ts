@@ -116,7 +116,7 @@ export abstract class S3Wrapper extends Model {
             const objList: this[] = []
 
             for (const id of idList) {
-                const entity = new (type as any)()
+                const entity = new (type as any)() as this
                 objList.push(await entity.get(id))
             }
 
