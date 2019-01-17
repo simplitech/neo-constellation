@@ -54,7 +54,6 @@ export default class SecurityGroup {
         }
 
         await Promise.all(promises)
-        log('RSGs', this.realSecurityGroups)
 
         this.runningSince = new Date()
 
@@ -237,7 +236,8 @@ export default class SecurityGroup {
             }
             await ec2.deleteSecurityGroup(payload).promise()
         } catch (e) {
-            // pass
+            // TODO: Handle errors
+            throw e
         }
 
     }
