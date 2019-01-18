@@ -8,7 +8,7 @@ import {
     getExtension,
 } from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
-import {plainToClass, plainToClassFromExist, classToPlainFromExist, Type} from 'class-transformer'
+import {plainToClass, plainToClassFromExist, classToPlain, Type} from 'class-transformer'
 import Network from '@/model/Network'
 
 export abstract class S3Wrapper extends Model {
@@ -51,7 +51,7 @@ export abstract class S3Wrapper extends Model {
 
             const s3 = AwsGlobal.s3
 
-            const objJson = classToPlainFromExist(this, this)
+            const objJson = classToPlain(this)
             const stringJson = JSON.stringify(objJson)
 
             await s3.putObject({

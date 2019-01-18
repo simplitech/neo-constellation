@@ -18,6 +18,11 @@
             {{$t('view.dashboard.addEmptyHost')}}
           </button>
         </div>
+        <div class="col">
+          <button class="primary" @click="test">
+            Teste
+          </button>
+        </div>
       </div>
 
       <div class="panel des-ml-50 tab-ml-30 mb-10" v-for="(network, i) in networks" :key="network.$id">
@@ -107,6 +112,12 @@ import Network from '@/model/Network'
 import User from '@/model/User'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
 import {$, sleep} from '@/simpli'
+import SecurityGroup from '@/model/SecurityGroup'
+import Rule from '@/model/Rule'
+import Host from '@/model/Host'
+import {Region} from '@/enum/Region'
+import {Size} from '@/enum/Size'
+import {Zone} from '@/enum/Zone'
 
 @Component
 export default class DashboardView extends Vue {
@@ -136,6 +147,15 @@ export default class DashboardView extends Vue {
 
   async newApplication() {
     $.modal.open('persistApplicationBlueprint')
+  }
+
+  async test() {
+    const net = new Network()
+    await net.get('4wy8kD6xF')
+
+    console.log(net)
+
+    net.delete()
   }
 }
 </script>

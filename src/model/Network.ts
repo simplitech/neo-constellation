@@ -46,6 +46,8 @@ export default class Network extends S3Wrapper {
         if (this.isRunning) {
             await network.synchronizeSecurityGroups()
             await network.synchronizeHosts()
+
+            await this.persist()
         }
 
         return network
@@ -102,7 +104,7 @@ export default class Network extends S3Wrapper {
 
     async persist(): Promise<void> {
       await super.persist()
-      syncNetworks()
+      // syncNetworks()
     }
 
     async build() {
@@ -191,8 +193,6 @@ export default class Network extends S3Wrapper {
         for (const host of this.hosts) {
             await host.transformFromAWS(this)
         }
-
-        await this.persist()
     }
 
     async synchronizeSecurityGroups() {
