@@ -270,6 +270,22 @@ export default class Host {
 
         this.switchRegion()
         try {
+            // Checks if instance exists first, otherwise will be stuck in the 'waitFor' for 10 minutes
+            const data = await this.ec2.describeInstances({
+                InstanceIds: [
+                    this.instanceId!,
+                ],
+            }).promise()
+
+            if (!data ||
+                !data.Reservations ||
+                !data.Reservations[0] ||
+                !data.Reservations[0].Instances ||
+                !data.Reservations[0].Instances[0]
+            ) {
+                return
+            }
+
             switch (state) {
 
                 case State.TERMINATED:

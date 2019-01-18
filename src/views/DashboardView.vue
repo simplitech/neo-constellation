@@ -327,7 +327,7 @@ export default class DashboardView extends Vue {
 
         let network = new Network()
 
-        network.name = 'NetworkName'
+        network.name = 'NetworkName6'
 
         await network.persist()
 
@@ -340,18 +340,17 @@ export default class DashboardView extends Vue {
         inRule.portRangeEnd = 8443
 
         const sg = new SecurityGroup()
-        sg.name = 'SecurityGroupTest1'
+        sg.name = 'SecurityGroupTest6'
         sg.inbound.push(inRule)
-        sg.networkId = network.$id
 
-        network.securityGroups.push(sg)
+        network.addSecurityGroup(sg)
 
         await network.persist()
 
         log('NetworkOld', network)
 
         const host = new Host()
-        host.name = 'HostTest1'
+        host.name = 'HostTest6'
         host.region = Region.SA_EAST_1
         host.size = Size.T2_NANO
         host.availabilityZone = Zone.SA_EAST_1A
@@ -368,6 +367,18 @@ export default class DashboardView extends Vue {
 
         await network.get(networkId!)
         await network.build()*/
+
+        const net = new Network()
+        const list = await net.list()
+
+        log(list)
+
+        if (list) {
+            for (const network of list) {
+                log(network)
+                await network.delete()
+            }
+        }
 
     }
 
