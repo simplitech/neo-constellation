@@ -272,15 +272,17 @@ input[type=radio], input[type=checkbox] {
   & ~ span {
     position: relative;
     display: flex;
-    margin-left: 20px;
-    cursor: pointer;
+    margin: auto;
+    padding: 0 10px 0 30px;
 
     &:after {
       @extend .transition;
       @extend .pal-white-10.bg;
+      font-family: sans-serif;
       cursor: pointer;
       content: " ";
-      left: -20px;
+      left: 10px;
+      top: calc(50% - 7.5px);
       position: absolute;
       width: 14px;
       height: 14px;
@@ -290,12 +292,24 @@ input[type=radio], input[type=checkbox] {
       padding-top: 1px;
       font-size: 15px;
     }
+
+    &.btn {
+      &:after {
+        @extend .pal-black-10.bg;
+      }
+      padding: 0 20px 0 30px;
+    }
   }
 
   &:checked {
     & ~ span {
       &:after {
         @extend .pal-secondary.bg;
+        @extend .pal-white-80.text;
+      }
+
+      &.btn {
+        @extend .pal-primary.bg;
         @extend .pal-white-80.text;
       }
     }
@@ -731,6 +745,22 @@ button, input[type=submit], .btn {
               @extend .pal-primary.bg.lighten;
             }
           }
+        }
+      }
+    }
+  }
+
+  input[type=radio], input[type=checkbox] {
+    & ~ span {
+      &:after {
+        @extend .pal-black-10.bg;
+      }
+    }
+
+    &:checked {
+      & ~ span {
+        &:after {
+          @extend .pal-black-80.text;
         }
       }
     }

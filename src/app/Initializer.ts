@@ -31,7 +31,7 @@ export default abstract class Initializer {
 
         const promises = []
         for (const region of regions) {
-            $.snotify.info($.t('log.node.importKeyPair', [region]))
+            $.snotify.info($.t('log.host.importKeyPair', [region]))
             AwsGlobal.switchRegion(region)
             promises.push(this.initEC2KeyPair(new EC2()))
         }

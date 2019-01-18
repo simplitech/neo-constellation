@@ -1,32 +1,27 @@
 import {
     $,
     uid,
-    info,
-    sleep,
     abort,
-    Model,
-    getUser,
     ResponseSerialize,
     ValidationRequired,
-    ValidationMaxLength,
+  syncNetworks,
 } from '@/simpli'
 import Host from '@/model/Host'
 import SecurityGroup from '@/model/SecurityGroup'
 import Dashboard from '@/model/Dashboard'
 import ConfigurationFile from '@/model/ConfigurationFile'
-import AwsGlobal from '@/model/AwsGlobal'
-import { plainToClass, classToPlain, serialize, deserialize } from 'class-transformer'
-import _ from 'lodash'
-import { success } from '@/simpli'
 import { S3Wrapper } from '@/app/S3Wrapper'
-import Command from './Command'
 import { State } from '@/enum/State'
 import { Log } from '@/helpers/logger.helper'
 
 export default class Network extends S3Wrapper {
+    $name: string = 'Network'
 
     $id: string | null = null
+
+    @ValidationRequired()
     name: string | null = null
+
     runningSince: Date | null = null
 
     @ResponseSerialize(SecurityGroup)
@@ -101,7 +96,13 @@ export default class Network extends S3Wrapper {
     }
 
     async list(): Promise<this[]|undefined> {
-        return await super.list(Network) || []
+        const fetch = async () => await super.list(Network) || []
+        return $.await.run(fetch, 'listNetwork')
+    }
+
+    async persist(): Promise<void> {
+      await super.persist()
+      syncNetworks()
     }
 
     async build() {
@@ -188,7 +189,6 @@ export default class Network extends S3Wrapper {
 
     async synchronizeHosts() {
         for (const host of this.hosts) {
-
             await host.transformFromAWS(this)
         }
 

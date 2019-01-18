@@ -38,6 +38,7 @@
 
   .multiselect-label {
     font-weight: bold;
+    margin-bottom: 4px !important;
   }
 }
 
@@ -179,6 +180,19 @@
     @extend .pal-white-30.border.bottom;
     border-radius: 6px 6px 0 0;
     margin-bottom: 16px;
+
+    &.no-body {
+      border: none;
+      border-radius: 6px;
+      margin-bottom: -16px;
+    }
+
+    &.hoverable {
+      cursor: pointer;
+      &:hover {
+        @extend .pal-black-30.bg;
+      }
+    }
   }
 
   > .panel-footer {
@@ -231,6 +245,9 @@
       margin: -8px;
       padding: 4px;
       margin-bottom: 8px;
+      &.no-body {
+        margin-bottom: -8px;
+      }
     }
     > .panel-footer {
       margin: -8px;

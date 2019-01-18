@@ -1,9 +1,34 @@
 @import "palette";
+@import "variables";
 
 .modal {
   .modal-scroll {
     width: unset;
     .modal-view {
+      .modal-content {
+        .modal-header {
+          background: $secondary-color !important;
+          .modal-title {
+            color: $primary-color !important;
+            font-weight: bold;
+          }
+          .close-icon {
+            color: $primary-color !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+.multiselect {
+  .multiselect__tags {
+    .multiselect__single {
+      line-height: 24px;
+      height: 24px;
+      width: calc(100% - 40px);
+      left: 4px;
+      top: 4px;
     }
   }
 }

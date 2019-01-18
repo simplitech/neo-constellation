@@ -3,6 +3,7 @@ import {
     abort,
     Model,
     success,
+    info,
     getUser,
     getExtension,
 } from '@/simpli'
@@ -59,8 +60,6 @@ export abstract class S3Wrapper extends Model {
                 Bucket: getUser().bucketName,
             }).promise()
 
-            success(`${typeof this} persisted.`, undefined, false)
-
         } catch (e) {
           // TODO: Handle errors
           throw e
@@ -100,7 +99,7 @@ export abstract class S3Wrapper extends Model {
                 Prefix: this.$prefix,
             }).promise()
 
-            success(`Listing ${typeof this}...`, undefined, false)
+            info(`Listing ${this.$name}...`, undefined, false)
 
             const idList = data.Contents
                 && data.Contents

@@ -289,7 +289,7 @@ export default class Node extends Model {
       InstanceIds: [idInstance!],
     }
 
-    $.snotify.info(idInstance, $.t('log.node.startInstances'))
+    $.snotify.info(idInstance, $.t('log.host.startInstances'))
     this.state = State.PENDING
 
     const fetch = async () => {
@@ -314,7 +314,7 @@ export default class Node extends Model {
       InstanceIds: [idInstance!],
     }
 
-    $.snotify.info(idInstance, $.t('log.node.stopInstances'))
+    $.snotify.info(idInstance, $.t('log.host.stopInstances'))
     this.state = State.STOPPING
 
     const fetch = async () => {
@@ -339,7 +339,7 @@ export default class Node extends Model {
       InstanceIds: [idInstance!],
     }
 
-    $.snotify.info(idInstance, $.t('log.node.terminateInstances'))
+    $.snotify.info(idInstance, $.t('log.host.terminateInstances'))
     this.state = State.SHUTTING_DOWN
 
     // async check network and destroy (without await)?
@@ -397,19 +397,19 @@ export default class Node extends Model {
     if (state === null || state === State.PENDING) {
       await ec2.waitFor('instanceRunning', payload).promise()
 
-      $.snotify.info(idInstance, $.t('log.node.startedInstances'))
+      $.snotify.info(idInstance, $.t('log.host.startedInstances'))
 
       this.state = State.RUNNING
     } else if (state === State.STOPPING) {
       await ec2.waitFor('instanceStopped', payload).promise()
 
-      $.snotify.info(idInstance, $.t('log.node.stoppedInstances'))
+      $.snotify.info(idInstance, $.t('log.host.stoppedInstances'))
 
       this.state = State.STOPPED
     } else if (state === State.SHUTTING_DOWN) {
       await ec2.waitFor('instanceTerminated', payload).promise()
 
-      $.snotify.info(idInstance, $.t('log.node.terminatedInstances'))
+      $.snotify.info(idInstance, $.t('log.host.terminatedInstances'))
 
       this.state = State.TERMINATED
     }
@@ -427,7 +427,7 @@ export default class Node extends Model {
       ],
     }
 
-    info('log.node.describeImages')
+    info('log.host.describeImages')
     const data = await this.ec2.describeImages(payload).promise()
 
     if (data.Images && data.Images[0]) this.idImage = data.Images[0].ImageId || null
@@ -445,7 +445,7 @@ export default class Node extends Model {
       ],
     }
 
-    info('log.node.describeSecurityGroups')
+    info('log.host.describeSecurityGroups')
     const data = await this.ec2.describeSecurityGroups(payload).promise()
 
     if (data.SecurityGroups && data.SecurityGroups[0]) return data.SecurityGroups[0].GroupId || null
@@ -465,7 +465,7 @@ export default class Node extends Model {
       ],
     }
 
-    info('log.node.describeKeyPairs')
+    info('log.host.describeKeyPairs')
     const data = await this.ec2.describeKeyPairs(payload).promise()
 
     if (data.KeyPairs && data.KeyPairs[0]) return data.KeyPairs[0].KeyName
@@ -485,7 +485,7 @@ export default class Node extends Model {
       ],
     }
 
-    info('log.node.describeVpcs')
+    info('log.host.describeVpcs')
     const data = await this.ec2.describeVpcs(payload).promise()
 
     if (data.Vpcs && data.Vpcs[0]) return data.Vpcs[0].VpcId
@@ -500,7 +500,7 @@ export default class Node extends Model {
       VpcId: vpcId,
     }
 
-    info('log.node.createSecurityGroup')
+    info('log.host.createSecurityGroup')
     const data = await this.ec2.createSecurityGroup(payload).promise()
 
     return data.GroupId || null
@@ -519,14 +519,14 @@ export default class Node extends Model {
         PublicKeyMaterial: publicKey,
       }
 
-      info('log.node.importKeyPair')
+      info('log.host.importKeyPair')
       await this.ec2.importKeyPair(importParams).promise()
     } else {
       const payload = {
         KeyName: name,
       }
 
-      info('log.node.createKeyPair')
+      info('log.host.createKeyPair')
       const data = await this.ec2.createKeyPair(payload).promise()
 
       await this.createBucket(Node.bucketName())
@@ -547,7 +547,7 @@ export default class Node extends Model {
 
       const s3 = new S3()
 
-      info('log.node.getObject')
+      info('log.host.getObject')
       const data = await s3.getObject(payload).promise()
 
       if (data) {
@@ -569,7 +569,7 @@ export default class Node extends Model {
 
     const s3 = new S3()
 
-    info('log.node.putObject')
+    info('log.host.putObject')
     return await s3.putObject(payload).promise()
   }
 
@@ -580,7 +580,7 @@ export default class Node extends Model {
 
     const s3 = new S3()
 
-    info('log.node.createBucket')
+    info('log.host.createBucket')
     try {
       const data = await s3.createBucket(payload).promise()
       return data
@@ -694,9 +694,9 @@ export default class Node extends Model {
 
     // Newly created instances start on a 'pending' status.
     // Must wait for 'running'
-    info('log.node.waitFor')
+    info('log.host.waitFor')
     await this.ec2.waitFor('instanceRunning', waitPayload).promise()
-    info('log.node.instanceRunning')
+    info('log.host.instanceRunning')
 
     const data = await this.ec2.associateIamInstanceProfile(payload).promise()
     if (data.IamInstanceProfileAssociation) return data.IamInstanceProfileAssociation.State
@@ -905,7 +905,7 @@ export default class Node extends Model {
   }
 
   private async setDefaultGroupRules() {
-    info('log.node.setSecurityGroupRules')
+    info('log.host.setSecurityGroupRules')
     await this.setSecurityGroupInboundRule('tcp', 22)
     await this.setSecurityGroupInboundRule('tcp', 443)
     await this.setSecurityGroupInboundRule('tcp', 80)
@@ -953,15 +953,15 @@ export default class Node extends Model {
       UserData: userData,
     }
 
-    info('log.node.runInstances')
+    info('log.host.runInstances')
     const data = await this.ec2.runInstances(payload).promise()
 
     if (data.Instances && data.Instances[0]) this.idInstance = data.Instances[0].InstanceId || null
 
     if (this.idInstance && this.instanceProfile) {
-      info('log.node.attachInstanceProfile')
+      info('log.host.attachInstanceProfile')
       await this.attachInstanceProfile(this.idInstance, this.instanceProfile)
-      info('log.node.instanceCreated')
+      info('log.host.instanceCreated')
     }
   }
 

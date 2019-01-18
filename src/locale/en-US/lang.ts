@@ -66,7 +66,7 @@ export default {
       invalidDate: 'The field \'{0}\' has not valid date',
       invalidProtocol: 'Not a valid protocol',
       timeOut: 'Request timed out',
-      networkNotEmpty: 'NetworkOld is not empty',
+      networkNotEmpty: 'Network is not empty',
       passwordLength: 'The password must have between {0} and {1} characters',
       samePassword: 'The fields password must match',
       invalidPassword: 'Invalid password',
@@ -89,7 +89,7 @@ export default {
   },
 
   log: {
-    node: {
+    host: {
       describeImages: 'Listing OS Images...',
       describeSecurityGroups: 'Listing Security Groups...',
       describeKeyPairs: 'Listing Key Pairs...',
@@ -219,20 +219,35 @@ export default {
     },
     dashboard: {
       title: 'Dashboard',
-      createNode: 'Create Node',
+      createHost: 'Create Host',
       reloadList: 'Reload List',
+      addEmptyHost: 'Add Empty Network',
+      addHostFromStack: 'Add Network from Stack',
+      newApplication: 'New Application',
       commands: 'Commands',
       containers: 'Containers',
     },
-    persistNode: {
-      title: 'Create Node',
-      titleAlt: 'Edit Node',
-      newNetwork: 'New NetworkOld',
+    persistHost: {
+      title: 'Create Host',
+      titleAlt: 'Edit Host',
+      newNetwork: 'New Network',
     },
     cmd: {
       title: 'Commands',
       command: 'Run new command:',
       sendCommand: 'Send Command',
+    },
+  },
+
+  modal: {
+    persistNetwork: {
+      title: 'Create Network',
+    },
+    persistApplicationBlueprint: {
+      title: 'Create Application',
+      dockerRegister: 'Docker Register',
+      repositoryAndBuildScript: 'Repository and Build Script',
+      sourceCodeFormat: 'Source Code Format',
     },
   },
 
@@ -244,13 +259,13 @@ export default {
         secretAccessKey: 'AWS Access Secret',
       },
     },
-    Node: {
-      title: 'Node',
+    Host: {
+      title: 'Host',
       columns: {
         $id: 'ID',
-        idNetwork: 'NetworkOld ID',
-        idImage: 'OS Image ID',
-        idSecurityGroup: 'SG ID',
+        idNetwork: 'Network ID',
+        imageId: 'OS Image ID',
+        securityGroupId: 'SG ID',
         name: 'Name',
         size: 'Size',
         region: 'Region',
@@ -283,11 +298,23 @@ export default {
       },
     },
     Network: {
-      title: 'NetworkOld',
+      title: 'Network',
       columns: {
         $id: 'ID',
-        name: 'NetworkOld name',
-        nodes: 'NetworkOld nodes',
+        name: 'Network Name',
+        hosts: 'Hosts',
+      },
+    },
+    ApplicationBlueprint: {
+      title: 'Application',
+      columns: {
+        $id: 'ID',
+        name: 'Name',
+        role: 'Role',
+        dockerImageId: 'Docker Image ID',
+        runCommands: 'RunCommands',
+        repositoryUrl: 'Repository',
+        buildScript: 'Build Script',
       },
     },
     Container: {

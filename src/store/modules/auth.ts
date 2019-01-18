@@ -1,7 +1,7 @@
 import {ActionTree, GetterTree, Module, MutationTree} from 'vuex'
 import AWS from 'aws-sdk'
 import {AuthState, RootState} from '@/types/store'
-import {$, push, error} from '@/simpli'
+import {$, sleep, push, error} from '@/simpli'
 import User from '@/model/User'
 import AuthRequest from '@/model/request/AuthRequest'
 import AwsGlobal from '@/model/AwsGlobal'
@@ -145,7 +145,7 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    * @param commit
    */
-  syncNetworks: async ({state, commit}) => {
+  syncNetworks: async ({commit}) => {
     commit('POPULATE_NETWORKS', await new Network().list())
   },
 
@@ -154,7 +154,7 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    * @param commit
    */
-  syncAppBlueprints: async ({state, commit}) => {
+  syncAppBlueprints: async ({commit}) => {
     commit('POPULATE_APP_BLUEPRINTS', await new ApplicationBlueprint().list())
   },
 
@@ -163,8 +163,20 @@ const actions: ActionTree<AuthState, RootState> = {
    * @param state
    * @param commit
    */
-  syncStacks: async ({state, commit}) => {
+  syncStacks: async ({commit}) => {
     commit('POPULATE_STACKS', await new Stack().list())
+  },
+
+  /**
+   * Verifies all the floating states and prepares them to the state
+   */
+  manageFloatingStates: ({state}) => {
+    for (const network of state.networks) {
+      for (const host of network.hosts) {
+        const fetch = async () => await host.manageState()
+        $.await.run(fetch, `host_${host.$id}`)
+      }
+    }
   },
 
   /**
