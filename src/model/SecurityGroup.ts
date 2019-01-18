@@ -1,4 +1,4 @@
-import { $, Model, ValidationRequired, abort, ResponseSerialize } from '@/simpli'
+import { $, Model, ValidationRequired, abort, ResponseSerialize, Log } from '@/simpli'
 import { EC2 } from 'aws-sdk'
 import { Region } from '@/enum/Region'
 import AwsGlobal from '@/model/AwsGlobal'
@@ -148,7 +148,7 @@ export default class SecurityGroup {
 
     private async populateRealSecurityGroup(ec2: EC2, region: Region) {
         const payload = {
-            GroupNames: [this.name!],
+            GroupNames: [this.$id!],
         }
         const data = await ec2.describeSecurityGroups(payload).promise()
 
@@ -170,7 +170,7 @@ export default class SecurityGroup {
             const vpcId = await this.getDefaultVpc(ec2)
 
             const data = await ec2.createSecurityGroup({
-                GroupName: this.name!,
+                GroupName: this.$id!,
                 Description: this.name!,
                 VpcId: vpcId,
             }).promise()
@@ -232,12 +232,12 @@ export default class SecurityGroup {
 
         try {
             const payload = {
-                GroupName: this.name!,
+                GroupName: this.$id!,
             }
             await ec2.deleteSecurityGroup(payload).promise()
         } catch (e) {
             // TODO: Handle errors
-            throw e
+            Log(2, e.message)
         }
 
     }

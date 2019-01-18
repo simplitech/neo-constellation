@@ -49,6 +49,7 @@ export default class Network extends S3Wrapper {
         const network = await super.get(id)
 
         if (this.isRunning) {
+            await network.synchronizeSecurityGroups()
             await network.synchronizeHosts()
         }
 
@@ -78,9 +79,9 @@ export default class Network extends S3Wrapper {
                 promises.push(host.waitFor(State.TERMINATED))
             }
 
-            Log(0, 'All hosts terminated.')
-
             await Promise.all(promises)
+
+            Log(0, 'All hosts terminated.')
 
             promises = []
 
@@ -96,7 +97,7 @@ export default class Network extends S3Wrapper {
 
         }
 
-        super.delete()
+        await super.delete()
     }
 
     async list(): Promise<this[]|undefined> {
@@ -116,15 +117,19 @@ export default class Network extends S3Wrapper {
         }
         await Promise.all(promises)
 
+        await this.synchronizeSecurityGroups()
+
         promises = []
         for (const host of this.hosts) {
             promises.push(host.create())
         }
         await Promise.all(promises)
 
+        await this.synchronizeHosts()
+
         this.runningSince = new Date()
 
-        this.persist()
+        await this.persist()
     }
 
     async addHost(host: Host) {
@@ -142,11 +147,12 @@ export default class Network extends S3Wrapper {
 
         if (this.isRunning) {
             // If the network is already running, newly created hosts will be instantiated right away
-            this.synchronizeHosts()
+            await host.create()
+            await this.synchronizeHosts()
         } else {
             // Otherwise, information will be stored in S3, but nothing will be actually running
         }
-        this.persist()
+        await this.persist()
     }
 
     async addSecurityGroup(securityGroup: SecurityGroup) {
@@ -163,20 +169,21 @@ export default class Network extends S3Wrapper {
         this.securityGroups.push(securityGroup)
 
         if (this.isRunning) {
-            this.synchronizeSecurityGroups()
+            await securityGroup.create()
+            await this.synchronizeSecurityGroups()
         }
 
-        this.persist()
+        await this.persist()
     }
 
     async addDashboard() {
         // Adds a dashboard
-        this.persist()
+        await this.persist()
     }
 
     async addConfigurationFile() {
         // Adds a configuration file
-        this.persist()
+        await this.persist()
     }
 
     async synchronizeHosts() {
@@ -185,7 +192,7 @@ export default class Network extends S3Wrapper {
             await host.transformFromAWS(this)
         }
 
-        this.persist()
+        await this.persist()
     }
 
     async synchronizeSecurityGroups() {
