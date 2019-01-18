@@ -178,11 +178,6 @@ export default class Host {
             this.$id = uid()
         }
 
-        // Synchronize SG
-        if (this.securityGroup) {
-            await this.securityGroup.transformFromAWS()
-        }
-
         /* Fluxo:
         ** 1) Security Group -> Build SG
         ** 2) Key Pair -> Inicializado
@@ -258,11 +253,15 @@ export default class Host {
 
         if (!this.instanceId) { abort (`Missing ID information`)}
 
-        await this.ec2.terminateInstances({
-            InstanceIds: [
-                this.instanceId!,
-            ],
-        }).promise()
+        try {
+            await this.ec2.terminateInstances({
+                InstanceIds: [
+                    this.instanceId!,
+                ],
+            }).promise()
+        } catch (e) {
+            Log(2, e.message)
+        }
 
     }
 
@@ -270,19 +269,22 @@ export default class Host {
         if (!this.instanceId) { abort(`Missing instance ID information.`) }
 
         this.switchRegion()
+        try {
+            switch (state) {
 
-        switch (state) {
+                case State.TERMINATED:
 
-            case State.TERMINATED:
+                    await this.ec2.waitFor('instanceTerminated', {
+                        InstanceIds: [this.instanceId!],
+                    }).promise()
 
-                await this.ec2.waitFor('instanceTerminated', {
-                    InstanceIds: [this.instanceId!],
-                }).promise()
+                    break
 
-                break
-
-            default:
-                return
+                default:
+                    return
+            }
+        } catch (e) {
+            Log(2, e.message)
         }
     }
 
