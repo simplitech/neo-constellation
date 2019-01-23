@@ -17,11 +17,14 @@
 
 <script lang="ts">
   import {Component, Prop, Vue} from 'vue-property-decorator'
+  import {Getter, Action} from 'vuex-class'
   import {$, sleep, abort} from '../../simpli'
   import Network from '../../model/Network'
 
   @Component
   export default class ModalPersistNetwork extends Vue {
+    @Action('auth/syncNetworks') syncNetworks!: Function
+
     network = new Network()
 
     closeEvent() {
@@ -42,6 +45,7 @@
       await this.network.validate()
       await this.network.persist()
       this.close()
+      this.syncNetworks()
     }
   }
 </script>

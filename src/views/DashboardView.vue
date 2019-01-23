@@ -1,5 +1,6 @@
 <template>
   <section class="container">
+
     <await name="listNetwork" effect="fade-up">
       <div class="row horiz items-center">
         <div class="col weight-1">
@@ -27,28 +28,34 @@
 
       <div class="panel des-ml-50 tab-ml-30 mb-10" v-for="(network, i) in networks" :key="network.$id">
         <div class="panel-header no-body hoverable">
-          <div class="mr-15">
-            <div class="panel-title">
-              <i class="fas fa-network-wired"></i>
+          <div class="panel-title">
+            <i class="fas fa-network-wired"></i>
+          </div>
+
+          <div class="weight-1 horiz gutter-10 mx-10">
+            <div class="label primary force-my-1">
+              <div class="label-prefix">
+                {{$t('classes.Network.columns.$id')}}
+              </div>
+              <span>{{network.$id}}</span>
+            </div>
+
+            <div class="label primary force-my-1">
+              <div class="label-prefix">
+                {{$t('classes.Network.columns.name')}}
+              </div>
+              <span>{{network.name}}</span>
             </div>
           </div>
 
-          <div class="label primary force-mr-5">
-            <div class="label-prefix">
-              {{$t('classes.Network.columns.$id')}}
-            </div>
-            <span>{{network.$id}}</span>
-          </div>
-
-          <div class="label primary force-mr-5 force-desktop-tablet">
-            <div class="label-prefix">
-              {{$t('classes.Network.columns.name')}}
-            </div>
-            <span>{{network.name}}</span>
+          <div>
+            <i class="fas fa-2x fa-angle-right"></i>
           </div>
         </div>
       </div>
+    </await>
 
+    <await name="listApplicationBlueprint" effect="fade-up">
       <div class="row horiz items-center">
         <div class="col weight-1">
           <h2>
@@ -57,51 +64,68 @@
           </h2>
         </div>
         <div class="col">
-          <button class="primary" @click="newApplication">
+          <button class="primary" @click="newApplicationBlueprint">
             {{$t('view.dashboard.newApplication')}}
           </button>
         </div>
       </div>
 
       <div class="panel des-ml-50 tab-ml-30 mb-10" v-for="(appBlueprint, i) in appBlueprints" :key="appBlueprint.$id">
-        <div class="panel-header no-body hoverable">
-          <div class="mr-15">
-            <div class="panel-title">
-              <i class="fas fa-drafting-compass"></i>
-            </div>
+        <div class="panel-header no-body">
+          <div class="panel-title">
+            <i class="fas fa-drafting-compass"></i>
           </div>
 
-          <div class="label primary force-mr-5">
-            <div class="label-prefix">
-              {{$t('classes.ApplicationBlueprint.columns.name')}}
+          <div class="weight-1 horiz gutter-10 mx-10">
+
+            <div class="label primary force-my-1">
+              <div class="label-prefix">
+                {{$t('classes.ApplicationBlueprint.columns.name')}}
+              </div>
+              <span>{{appBlueprint.name}}</span>
             </div>
-            <span>{{appBlueprint.name}}</span>
+
+            <div class="label primary force-my-1">
+              <div class="label-prefix">
+                {{$t('classes.ApplicationBlueprint.columns.role')}}
+              </div>
+              <span>{{appBlueprint.role}}</span>
+            </div>
+
+            <div class="label primary force-my-1" v-if="appBlueprint.dockerImageId">
+              <div class="label-prefix">
+                {{$t('classes.ApplicationBlueprint.columns.dockerImageId')}}
+              </div>
+              <span>{{appBlueprint.dockerImageId}}</span>
+            </div>
+
+            <div class="label primary force-my-1" v-if="appBlueprint.repositoryUrl">
+              <div class="label-prefix">
+                {{$t('classes.ApplicationBlueprint.columns.repositoryUrl')}}
+              </div>
+              <span>{{appBlueprint.repositoryUrl}}</span>
+            </div>
+
           </div>
 
-          <div class="label primary force-mr-5 force-desktop-tablet">
-            <div class="label-prefix">
-              {{$t('classes.ApplicationBlueprint.columns.role')}}
-            </div>
-            <span>{{appBlueprint.role}}</span>
-          </div>
+          <div class="horiz gutter-10">
+            <button class="contrast icon">
+              <i class="fas fa-edit"></i>
+            </button>
 
-          <div class="label primary force-mr-5 force-desktop-tablet" v-if="appBlueprint.dockerImageId">
-            <div class="label-prefix">
-              {{$t('classes.ApplicationBlueprint.columns.dockerImageId')}}
-            </div>
-            <span>{{appBlueprint.dockerImageId}}</span>
-          </div>
+            <button class="contrast icon">
+              <i class="fas fa-eye"></i>
+            </button>
 
-          <div class="label primary force-mr-5 force-desktop-tablet" v-if="appBlueprint.repositoryUrl">
-            <div class="label-prefix">
-              {{$t('classes.ApplicationBlueprint.columns.repositoryUrl')}}
-            </div>
-            <span>{{appBlueprint.repositoryUrl}}</span>
+            <button class="contrast icon" @click="removeApplicationBlueprint(appBlueprint)">
+              <i class="fas fa-trash"></i>
+            </button>
           </div>
         </div>
       </div>
-
     </await>
+
+    <modal-remove-application-blueprint @confirm="confirmApplicationBlueprint"/>
   </section>
 </template>
 
@@ -111,15 +135,12 @@ import {Getter, Action} from 'vuex-class'
 import Network from '@/model/Network'
 import User from '@/model/User'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
+import ModalRemoveApplicationBlueprint from '../components/modals/ModalRemoveApplicationBlueprint.vue'
 import {$, sleep} from '@/simpli'
-import SecurityGroup from '@/model/SecurityGroup'
-import Rule from '@/model/Rule'
-import Host from '@/model/Host'
-import {Region} from '@/enum/Region'
-import {Size} from '@/enum/Size'
-import {Zone} from '@/enum/Zone'
 
-@Component
+@Component({
+  components: {ModalRemoveApplicationBlueprint},
+})
 export default class DashboardView extends Vue {
   @Getter('auth/user') user!: User
   @Getter('auth/networks') networks!: Network[]
@@ -133,8 +154,8 @@ export default class DashboardView extends Vue {
   }
 
   async populate() {
-    await this.syncNetworks()
-    await this.syncAppBlueprints()
+    this.syncNetworks()
+    this.syncAppBlueprints()
   }
 
   async addEmptyHost() {
@@ -145,8 +166,17 @@ export default class DashboardView extends Vue {
     /**/
   }
 
-  async newApplication() {
+  async newApplicationBlueprint() {
     $.modal.open('persistApplicationBlueprint')
+  }
+
+  async removeApplicationBlueprint(item: ApplicationBlueprint) {
+    $.modal.open('removeApplicationBlueprint', item)
+  }
+
+  async confirmApplicationBlueprint(item: ApplicationBlueprint) {
+    await item.delete()
+    this.syncAppBlueprints()
   }
 
   async test() {

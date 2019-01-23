@@ -127,6 +127,7 @@ export default {
     menu: 'Menu',
     add: 'Add',
     create: 'Create',
+    confirm: 'Confirm',
     back: 'Back',
     export: 'Export',
     select: 'Select',
@@ -248,6 +249,10 @@ export default {
       dockerRegister: 'Docker Register',
       repositoryAndBuildScript: 'Repository and Build Script',
       sourceCodeFormat: 'Source Code Format',
+    },
+    removeApplicationBlueprint: {
+      title: 'Remove Application',
+      body: 'Are you sure you want to remove this application?',
     },
   },
 

@@ -3,6 +3,7 @@
 
 .modal {
   .modal-scroll {
+    overflow-y: auto;
     width: unset;
     .modal-view {
       .modal-content {
