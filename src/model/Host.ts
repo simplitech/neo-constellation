@@ -17,6 +17,10 @@ import Initializer from '@/app/Initializer'
 import { Zone } from '@/enum/Zone'
 import Network from './Network'
 import { uid } from '@/simpli'
+import Exception from './Exception'
+import { ErrorCode } from '@/enum/ErrorCode'
+import { Severity } from '@/helpers/logger.helper'
+import { sleep } from 'simpli-web-sdk'
 
 export default class Host {
 
@@ -70,7 +74,7 @@ export default class Host {
   applications: Application[] = []
 
   initialScript: string | null =
-    'echo test'
+    'echo test\n'
     + 'echo test2'
 
   @RequestExclude()
@@ -83,13 +87,8 @@ export default class Host {
    */
   async transformFromAWS(network: Network) {
 
-    const { switchRegion } = AwsGlobal
-
-    if (!this.region) {
-      abort(`Missing region information`)
-    }
-    if (!this.instanceId) {
-      abort(`Missing ID information`)
+    if (!this.region || !this.instanceId) {
+      throw new Exception(ErrorCode.SYNCHRONIZE_HOST, this.$id, 'Missing region or ID information')
     }
 
     const payload = {
@@ -99,95 +98,91 @@ export default class Host {
     }
 
     this.switchRegion()
+
     try {
       const data = await this.ec2.describeInstances(payload).promise()
 
-      if (data.Reservations) {
+      if (
+        data.Reservations &&
+        data.Reservations.length &&
+        data.Reservations![0] &&
+        data.Reservations![0].Instances &&
+        data.Reservations![0].Instances!.length &&
+        data.Reservations![0].Instances![0]
+        ) {
 
-        // Scans all instances
-        for (const reservation of data.Reservations) {
-          const instance = reservation.Instances && reservation.Instances[0]
+        const instance = data.Reservations![0].Instances![0]
 
-          // Function to keep old value and log
-          const assign = (prop: String, value: any) => {
-            Log(1, `Host.${prop} empty during sync. Keeping old value...`)
-            return value
-          }
-
-          if (instance) {
-
-            // ID
-            this.$id = instance.Tags && instance.Tags
-              .filter((t) => t.Key && t.Key === 'Id')
-              .map((t) => t.Value)[0]
-              || assign('\$id', this.$id)
-
-            // Instance ID
-            this.instanceId = instance.InstanceId || assign('instanceId', this.instanceId)
-
-            // Network ID
-            this.networkId = instance.Tags && instance.Tags
-              .filter((t) => t.Key && t.Key === 'idNetwork')
-              .map((t) => t.Value)[0]
-              || assign('networkId', this.networkId)
-
-            // Name
-            this.name = instance.Tags && instance.Tags
-              .filter((t) => t.Key && t.Key === 'Name')
-              .map((t) => t.Value)[0]
-              || assign('name', this.name)
-
-            // State
-            this.state = instance.State && instance.State.Code || assign('state', this.state)
-
-            // TODO: awsHost.cpuUsage
-
-            // TODO: awsHost.ramUsage
-
-            // Size
-            this.size = instance.InstanceType as Size || assign('size', this.size)
-
-            // Region
-            // this.region = this.region
-
-            // Availability Zone
-            this.availabilityZone = instance.Placement
-              && instance.Placement.AvailabilityZone as Zone
-              || assign('availabilityZone', this.availabilityZone)
-
-            // Image ID (AMI)
-            this.imageId = instance.ImageId || assign('imageId', this.imageId)
-
-            // Security Group
-            this.securityGroup = network.securityGroups.find((sg) => sg.hasRealSecurityGroup(
-              this.region!,
-              instance!.SecurityGroups![0].GroupId!,
-            ),
-            ) || assign('securityGroup', this.securityGroup)
-
-            // IPV4
-            this.ipv4 = instance.PublicIpAddress || assign('ipv4', this.ipv4)
-
-            // Public DNS
-            this.publicDns = instance.PublicDnsName || assign('publicDns', this.publicDns)
-
-            // Applications (not sure how to check this)
-            // this.applications = this.applications
-
-          } else {
-            Log(1, 'Host instance not found in EC2')
-          }
+        // Function to keep old value and log
+        const assign = (prop: String, value: any) => {
+          Log(1, `Host.${prop} empty during sync. Keeping old value...`)
+          return value
         }
+
+        // ID
+        this.$id = instance.Tags && instance.Tags
+          .filter((t) => t.Key && t.Key === 'Id')
+          .map((t) => t.Value)[0]
+          || assign('\$id', this.$id)
+
+        // Instance ID
+        this.instanceId = instance.InstanceId || assign('instanceId', this.instanceId)
+
+        // Network ID
+        this.networkId = instance.Tags && instance.Tags
+          .filter((t) => t.Key && t.Key === 'idNetwork')
+          .map((t) => t.Value)[0]
+          || assign('networkId', this.networkId)
+
+        // Name
+        this.name = instance.Tags && instance.Tags
+          .filter((t) => t.Key && t.Key === 'Name')
+          .map((t) => t.Value)[0]
+          || assign('name', this.name)
+
+        // State
+        this.state = instance.State && instance.State.Code || assign('state', this.state)
+
+        // TODO: awsHost.cpuUsage
+
+        // TODO: awsHost.ramUsage
+
+        // Size
+        this.size = instance.InstanceType as Size || assign('size', this.size)
+
+        // Region
+        // this.region = this.region
+
+        // Availability Zone
+        this.availabilityZone = instance.Placement
+          && instance.Placement.AvailabilityZone as Zone
+          || assign('availabilityZone', this.availabilityZone)
+
+        // Image ID (AMI)
+        this.imageId = instance.ImageId || assign('imageId', this.imageId)
+
+        // Security Group
+        this.securityGroup = network.securityGroups.find((sg) => sg.hasRealSecurityGroup(
+          this.region!,
+          instance!.SecurityGroups![0].GroupId!,
+        ),
+        ) || assign('securityGroup', this.securityGroup)
+
+        // IPV4
+        this.ipv4 = instance.PublicIpAddress || assign('ipv4', this.ipv4)
+
+        // Public DNS
+        this.publicDns = instance.PublicDnsName || assign('publicDns', this.publicDns)
+
+        // Applications (not sure how to check this)
+        // this.applications = this.applications
+
       } else {
-        Log(1, 'Host instance not found in EC2')
+        throw new Exception(ErrorCode.SYNCHRONIZE_HOST, this.$id, 'Host not found in EC2.')
       }
-
     } catch (e) {
-      // TODO: Handle error
-      Log(2, e.message)
-      throw (e)
+      throw new Exception(ErrorCode.SYNCHRONIZE_HOST, this.$id, e.message)
     }
-
   }
 
   /**
@@ -195,78 +190,52 @@ export default class Host {
    * @return {Promise<void>}
    */
   async create() {
-    if (!this.region) {
-      abort(`Missing region information`)
+    try {
+      await this.createInstance()
+      Log(Severity.INFO, `EC2 instance for host '${this.$id}' created on region '${this.region}'.`)
+
+    } catch (e) {
+      throw new Exception(ErrorCode.CREATE_HOST, this.$id, e.message)
     }
 
-    if (!this.$id) {
-      this.$id = uid()
-    }
+    try {
 
-    // If host doesn't have an image ID, gets the default
-    if (!this.imageId) {
-      this.imageId = await this.getImageId() || null
-
-      // If not even default image ID was found, abort
-      if (!this.imageId) { abort('system.error.fieldNotDefined') }
-    }
-
-    // Gets the Security Group AWS ID (GroupID) for this host's region
-    const sgParam = this.securityGroup && this.securityGroup.getRealSecurityGroup(this.region!)
-
-    if (!sgParam) { abort('system.error.fieldNotDefined') }
-
-    // Runs the EC2 instance
-    this.switchRegion()
-
-    const payload = {
-      ImageId: this.imageId!,
-      InstanceType: this.size!,
-      KeyName: Initializer.DEFAULT_KEY_NAME,
-      SecurityGroupIds: [sgParam!],
-      MinCount: 1,
-      MaxCount: 1,
-      Placement: {
-        AvailabilityZone: this.availabilityZone ? this.availabilityZone.toString() : undefined,
-      },
-      TagSpecifications: [
-        {
-          ResourceType: Host.DEFAULT_RESOURCE_TYPE,
-          Tags: [
-            {
-              Key: 'Name',
-              Value: this.name!,
-            },
-            {
-              Key: Host.DEFAULT_NETWORK_TAG,
-              Value: this.networkId!,
-            },
-            {
-              Key: 'SecurityGroupId',
-              Value: this.securityGroup && this.securityGroup.$id || '',
-            },
-            {
-              Key: 'Id',
-              Value: this.$id,
-            },
-          ],
-        },
-      ],
-      UserData: this.userData,
-    }
-
-    info('log.host.runInstances')
-    const data = await this.ec2.runInstances(payload).promise()
-
-    if (data.Instances && data.Instances[0]) this.instanceId = data.Instances[0].InstanceId || null
-
-    // If instance was successfully created, attaches the IAM Instance Profile (for log reading)
-    if (this.instanceId) {
-      info('log.host.attachInstanceProfile')
       await this.attachInstanceProfile()
-      info('log.host.instanceCreated')
+      Log(Severity.INFO, `Instance Profile attatched to '${this.$id}' corresponding EC2 instance.`)
+
+    } catch (e) {
+      throw new Exception(ErrorCode.ATTACH_INSTANCE_PROFILE, this.$id, e.message)
     }
 
+  }
+  /**
+   * Signals the state change to the corresponding EC2 instance for this host
+   * @return {Promise<void>}
+   */
+  async changeState(state: State.RUNNING | State.STOPPED | State.TERMINATED) {
+    try {
+      switch (state) {
+        case State.RUNNING:
+          await this.turnOn()
+          break
+        case State.STOPPED:
+          await this.turnOff()
+          break
+        case State.TERMINATED:
+          await this.terminate()
+          break
+      }
+    } catch (e) {
+      let message: String
+
+      if (e instanceof Exception) {
+        message = `Code ${e.errorCode}: ${e.message}`
+      } else {
+        message = e.message
+      }
+
+      Log(Severity.WARN, message)
+    }
   }
 
   /**
@@ -275,7 +244,9 @@ export default class Host {
    */
   async turnOn() {
 
-    if (!this.instanceId) abort('system.error.fieldNotDefined')
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+    }
 
     this.switchRegion()
 
@@ -299,7 +270,9 @@ export default class Host {
    */
   async turnOff() {
 
-    if (!this.instanceId) abort('system.error.fieldNotDefined')
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+    }
 
     this.switchRegion()
 
@@ -323,7 +296,9 @@ export default class Host {
    */
   async terminate() {
 
-    if (!this.instanceId) abort('system.error.fieldNotDefined')
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+    }
 
     this.switchRegion()
 
@@ -348,7 +323,9 @@ export default class Host {
   async manageState() {
     const { ec2, instanceId, state } = this
 
-    if (!instanceId) abort('system.error.fieldNotDefined')
+    if (!instanceId) {
+      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+    }
 
     this.switchRegion()
 
@@ -391,7 +368,7 @@ export default class Host {
    */
   async waitFor(state: State) {
     if (!this.instanceId) {
-      abort(`Missing instance ID information.`)
+      return
     }
 
     this.switchRegion()
@@ -450,6 +427,81 @@ export default class Host {
     return null
   }
 
+  private async createInstance() {
+    if (
+      !this.region ||
+      !this.$id ||
+      !this.networkId ||
+      !this.securityGroup ||
+      !this.securityGroup.$id ||
+      !this.size ||
+      !this.name
+    ) {
+      throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing instance information.')
+    }
+
+    // If host doesn't have an image ID, gets the default
+    if (!this.imageId) {
+      this.imageId = await this.getImageId() || null
+
+      // If not even default image ID was found, abort
+      if (!this.imageId) { throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing instance information.') }
+    }
+
+    // Gets the Security Group AWS ID (GroupID) for this host's region
+    const sgParam = this.securityGroup!.getRealSecurityGroup(this.region!)
+
+    if (!sgParam) { throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing instance information.') }
+
+    // Runs the EC2 instance
+    this.switchRegion()
+
+    const payload = {
+      ImageId: this.imageId!,
+      InstanceType: this.size!,
+      KeyName: Initializer.DEFAULT_KEY_NAME,
+      SecurityGroupIds: [sgParam!],
+      MinCount: 1,
+      MaxCount: 1,
+      Placement: {
+        AvailabilityZone: this.availabilityZone ? this.availabilityZone.toString() : undefined,
+      },
+      TagSpecifications: [
+        {
+          ResourceType: Host.DEFAULT_RESOURCE_TYPE,
+          Tags: [
+            {
+              Key: 'Name',
+              Value: this.name!,
+            },
+            {
+              Key: Host.DEFAULT_NETWORK_TAG,
+              Value: this.networkId!,
+            },
+            {
+              Key: 'SecurityGroupId',
+              Value: this.securityGroup!.$id!,
+            },
+            {
+              Key: 'Id',
+              Value: this.$id!,
+            },
+          ],
+        },
+      ],
+      UserData: this.userData,
+    }
+
+    info('log.host.runInstances')
+    const data = await this.ec2.runInstances(payload).promise()
+
+    if (!data || !data.Instances || !data.Instances.length || !data.Instances[0] || !data.Instances[0].InstanceId) {
+      throw new Exception(ErrorCode.CREATE_HOST, this.$id)
+    }
+
+    this.instanceId = data.Instances[0].InstanceId!
+  }
+
   /**
    * Attaches an IAM Instance Profile to the corresponding EC2 instance of this host
    * to be used for log reading through SSM
@@ -466,7 +518,7 @@ export default class Host {
     }
 
     const waitPayload = {
-      InstanceIds: [ this.instanceId!],
+      InstanceIds: [this.instanceId!],
     }
 
     // Newly created instances start on a 'pending' status.
@@ -477,24 +529,27 @@ export default class Host {
 
     const data = await this.ec2.associateIamInstanceProfile(payload).promise()
     if (!data || !data.IamInstanceProfileAssociation) {
-      throw new Error('Instance Profile not attached.')
+      throw new Exception(ErrorCode.ATTACH_INSTANCE_PROFILE, this.$id)
     }
+
+    throw Error('SADLKGHBWOBOWEGIKO')
+
   }
 
   // Utility
   private switchRegion() {
-    if (!this.region) { abort('system.error.fieldNotDefined') }
+    if (!this.region) { throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing region information.') }
     this.ec2 = new EC2({ region: this.region! })
   }
 
-  private async existsInstance(): Promise <Boolean> {
+  private async existsInstance(): Promise < Boolean > {
     if (!this.instanceId) {
       return false
     }
 
     this.switchRegion()
     const data = await this.ec2.describeInstances({
-      InstanceIds: [ this.instanceId!],
+      InstanceIds: [this.instanceId!],
     }).promise()
 
     return !!(data
