@@ -20,7 +20,6 @@ import { uid } from '@/simpli'
 import Exception from './Exception'
 import { ErrorCode } from '@/enum/ErrorCode'
 import { Severity } from '@/helpers/logger.helper'
-import { sleep } from 'simpli-web-sdk'
 
 export default class Host {
 
@@ -88,7 +87,7 @@ export default class Host {
   async transformFromAWS(network: Network) {
 
     if (!this.region || !this.instanceId) {
-      throw new Exception(ErrorCode.SYNCHRONIZE_HOST, this.$id, 'Missing region or ID information')
+      throw new Exception(ErrorCode.ON_SYNCHRONIZE_HOST, this.$id, 'Missing region or ID information')
     }
 
     const payload = {
@@ -178,10 +177,10 @@ export default class Host {
         // this.applications = this.applications
 
       } else {
-        throw new Exception(ErrorCode.SYNCHRONIZE_HOST, this.$id, 'Host not found in EC2.')
+        throw new Exception(ErrorCode.ON_SYNCHRONIZE_HOST, this.$id, 'Host not found in EC2.')
       }
     } catch (e) {
-      throw new Exception(ErrorCode.SYNCHRONIZE_HOST, this.$id, e.message)
+      throw new Exception(ErrorCode.ON_SYNCHRONIZE_HOST, this.$id, e.message)
     }
   }
 
@@ -195,7 +194,7 @@ export default class Host {
       Log(Severity.INFO, `EC2 instance for host '${this.$id}' created on region '${this.region}'.`)
 
     } catch (e) {
-      throw new Exception(ErrorCode.CREATE_HOST, this.$id, e.message)
+      throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, e.message)
     }
 
     try {
@@ -204,7 +203,7 @@ export default class Host {
       Log(Severity.INFO, `Instance Profile attatched to '${this.$id}' corresponding EC2 instance.`)
 
     } catch (e) {
-      throw new Exception(ErrorCode.ATTACH_INSTANCE_PROFILE, this.$id, e.message)
+      throw new Exception(ErrorCode.ON_ATTACH_INSTANCE_PROFILE, this.$id, e.message)
     }
 
   }
@@ -245,7 +244,7 @@ export default class Host {
   async turnOn() {
 
     if (!this.instanceId) {
-      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
     this.switchRegion()
@@ -271,7 +270,7 @@ export default class Host {
   async turnOff() {
 
     if (!this.instanceId) {
-      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
     this.switchRegion()
@@ -297,7 +296,7 @@ export default class Host {
   async terminate() {
 
     if (!this.instanceId) {
-      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
     this.switchRegion()
@@ -324,7 +323,7 @@ export default class Host {
     const { ec2, instanceId, state } = this
 
     if (!instanceId) {
-      throw new Exception(ErrorCode.CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
     this.switchRegion()
@@ -437,7 +436,7 @@ export default class Host {
       !this.size ||
       !this.name
     ) {
-      throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing instance information.')
+      throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, 'Missing instance information.')
     }
 
     // If host doesn't have an image ID, gets the default
@@ -445,13 +444,13 @@ export default class Host {
       this.imageId = await this.getImageId() || null
 
       // If not even default image ID was found, abort
-      if (!this.imageId) { throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing instance information.') }
+      if (!this.imageId) { throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, 'Missing instance information.') }
     }
 
     // Gets the Security Group AWS ID (GroupID) for this host's region
     const sgParam = this.securityGroup!.getRealSecurityGroup(this.region!)
 
-    if (!sgParam) { throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing instance information.') }
+    if (!sgParam) { throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, 'Missing instance information.') }
 
     // Runs the EC2 instance
     this.switchRegion()
@@ -496,7 +495,7 @@ export default class Host {
     const data = await this.ec2.runInstances(payload).promise()
 
     if (!data || !data.Instances || !data.Instances.length || !data.Instances[0] || !data.Instances[0].InstanceId) {
-      throw new Exception(ErrorCode.CREATE_HOST, this.$id)
+      throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id)
     }
 
     this.instanceId = data.Instances[0].InstanceId!
@@ -528,17 +527,16 @@ export default class Host {
     info('log.host.instanceRunning')
 
     const data = await this.ec2.associateIamInstanceProfile(payload).promise()
-    if (!data || !data.IamInstanceProfileAssociation) {
-      throw new Exception(ErrorCode.ATTACH_INSTANCE_PROFILE, this.$id)
-    }
 
-    throw Error('SADLKGHBWOBOWEGIKO')
+    if (!data || !data.IamInstanceProfileAssociation) {
+      throw new Exception(ErrorCode.ON_ATTACH_INSTANCE_PROFILE, this.$id)
+    }
 
   }
 
   // Utility
   private switchRegion() {
-    if (!this.region) { throw new Exception(ErrorCode.CREATE_HOST, this.$id, 'Missing region information.') }
+    if (!this.region) { throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, 'Missing region information.') }
     this.ec2 = new EC2({ region: this.region! })
   }
 

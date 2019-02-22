@@ -8,7 +8,6 @@ import Exception from '@/model/Exception'
 import { ErrorCode } from '@/enum/ErrorCode'
 import { Severity } from '@/helpers/logger.helper'
 import { RuleType } from '@/enum/RuleType'
-import { sleep } from 'simpli-web-sdk'
 import settle from '@/helpers/settler.helper'
 
 export interface RealSecurityGroup {
@@ -88,7 +87,7 @@ export default class SecurityGroup {
           promises.push(this.createRealRules(RuleType.INBOUND, rule))
         }
 
-      await Promise.all(promises)
+      await settle(promises)
     } catch (e) {
       throw new Exception(ErrorCode.ON_CREATE_RULE, this.$id, e.message)
     }
@@ -101,9 +100,9 @@ export default class SecurityGroup {
           promises.push(this.createRealRules(RuleType.OUTBOUND, rule))
         }
 
-      await Promise.all(promises)
+      await settle(promises)
     } catch (e) {
-      throw new Exception(ErrorCode.ON_CREATE_OUTBOUND_RULE, this.$id, e.message)
+      throw new Exception(ErrorCode.ON_CREATE_RULE, this.$id, e.message)
     }
 
   }
@@ -124,7 +123,7 @@ export default class SecurityGroup {
 
     }
 
-    await Promise.all(promises)
+    await settle(promises)
 
     this.runningSince = null
   }
@@ -149,7 +148,7 @@ export default class SecurityGroup {
 
     }
 
-    await Promise.all(promises)
+    await settle(promises)
 
   }
 
@@ -276,7 +275,7 @@ export default class SecurityGroup {
 
     }
 
-    await Promise.all(promises)
+    await settle(promises)
 
   }
 
@@ -310,7 +309,7 @@ export default class SecurityGroup {
 
     }
 
-    await Promise.all(promises)
+    await settle(promises)
 
   }
 
@@ -357,7 +356,7 @@ export default class SecurityGroup {
       }).promise()
 
       if (!data || !data.GroupId) {
-        throw new Exception(ErrorCode.ON_CREATE_SECURITY_GROUP, this.$id!)
+        throw new Exception(ErrorCode.ON_CREATE_SECURITY_GROUP, this.$id)
       }
 
       this.realSecurityGroups.push({ [region]: data.GroupId })

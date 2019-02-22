@@ -265,54 +265,66 @@ export default class Network extends S3Wrapper {
   }
 
   private async rollback(code?: ErrorCode) {
-    try {
 
-      let promises = []
+    let promises = []
 
-      if (!code) {
-        code = ErrorCode.UNDEFINED
-      }
-
-      switch (code) {
-        default:
-        case ErrorCode.ON_SYNCHRONIZE_HOST:
-        case ErrorCode.ON_ATTACH_INSTANCE_PROFILE:
-        case ErrorCode.ON_CREATE_HOST:
-
-          Log(Severity.WARN, 'Rolling back hosts...')
-          // Deleting hosts
-          promises = []
-          for (const host of this.hosts) {
-            promises.push(host.terminate())
-          }
-
-          await settle(promises)
-
-          Log(Severity.WARN, 'Waiting for hosts to be terminated...')
-          // Waiting for EC2 instances to be terminated
-          promises = []
-          for (const host of this.hosts) {
-            promises.push(host.waitFor(State.TERMINATED))
-          }
-
-          await settle(promises)
-
-        case ErrorCode.ON_SYNCHRONIZE_SECURITY_GROUP:
-        case ErrorCode.ON_CREATE_RULE:
-        case ErrorCode.ON_CREATE_SECURITY_GROUP:
-
-          Log(Severity.WARN, 'Rolling back security groups...')
-          // Deleting security groups
-          promises = []
-          for (const securityGroup of this.securityGroups) {
-            promises.push(securityGroup.destroy())
-          }
-
-          await settle(promises)
-
-      }
-    } catch (e) {
-      Log(Severity.WARN, e)
+    if (!code) {
+      code = ErrorCode.UNDEFINED
     }
+
+    switch (code) {
+      default:
+      case ErrorCode.ON_SYNCHRONIZE_HOST:
+      case ErrorCode.ON_ATTACH_INSTANCE_PROFILE:
+      case ErrorCode.ON_CREATE_HOST:
+
+      try {
+        Log(Severity.WARN, 'Rolling back hosts...')
+        // Deleting hosts
+        promises = []
+        for (const host of this.hosts) {
+          promises.push(host.terminate())
+        }
+
+        await settle(promises)
+
+      } catch (e) {
+        Log(Severity.WARN, e)
+      }
+
+      try {
+        Log(Severity.WARN, 'Waiting for hosts to be terminated...')
+        // Waiting for EC2 instances to be terminated
+        promises = []
+        for (const host of this.hosts) {
+          promises.push(host.waitFor(State.TERMINATED))
+        }
+
+        await settle(promises)
+
+      } catch (e) {
+        Log(Severity.WARN, e)
+      }
+
+      case ErrorCode.ON_SYNCHRONIZE_SECURITY_GROUP:
+      case ErrorCode.ON_CREATE_RULE:
+      case ErrorCode.ON_CREATE_SECURITY_GROUP:
+
+      try {
+        Log(Severity.WARN, 'Rolling back security groups...')
+        // Deleting security groups
+        promises = []
+        for (const securityGroup of this.securityGroups) {
+          promises.push(securityGroup.destroy())
+        }
+
+        await settle(promises)
+      } catch (e) {
+        Log(Severity.WARN, e)
+      }
+
+    }
+    Log(Severity.WARN, 'Rollback finished.')
+
   }
 }

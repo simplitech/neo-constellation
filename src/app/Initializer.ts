@@ -74,16 +74,22 @@ export default abstract class Initializer {
             // If private key material is not in S3, creates a new key in the default region
             // and stores that information in S3
             if (e.code === 'NoSuchKey' || e.code === 'NotFound') {
-                const data = await AwsGlobal.ec2.createKeyPair({
-                    KeyName: Initializer.DEFAULT_KEY_NAME,
-                }).promise()
-                await AwsGlobal.s3.putObject({
+
+              await AwsGlobal.ec2.deleteKeyPair({
+                KeyName: Initializer.DEFAULT_KEY_NAME,
+              }).promise()
+
+              const data = await AwsGlobal.ec2.createKeyPair({
+                  KeyName: Initializer.DEFAULT_KEY_NAME,
+              }).promise()
+
+              await AwsGlobal.s3.putObject({
                     Body: data.KeyMaterial,
                     Key: `${Initializer.DEFAULT_KEY_NAME}.pem`,
                     Bucket: getUser().bucketName,
                 }).promise()
 
-                await AwsGlobal.s3.waitFor('objectExists', {
+              await AwsGlobal.s3.waitFor('objectExists', {
                     Key: `${Initializer.DEFAULT_KEY_NAME}.pem`,
                     Bucket: getUser().bucketName,
                 }).promise()
