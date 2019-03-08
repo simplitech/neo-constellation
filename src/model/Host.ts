@@ -76,9 +76,6 @@ export default class Host {
     'echo test\n'
     + 'echo test2'
 
-  @RequestExclude()
-  private ec2 = new EC2()
-
   /**
    * Populates the current object with information from the actual EC2 instance
    * running on AWS (synchronizes).
@@ -96,10 +93,8 @@ export default class Host {
       ],
     }
 
-    this.switchRegion()
-
     try {
-      const data = await this.ec2.describeInstances(payload).promise()
+      const data = await new EC2({region: this.region}).describeInstances(payload).promise()
 
       if (
         data.Reservations &&
@@ -247,13 +242,15 @@ export default class Host {
       throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
-    this.switchRegion()
-
     $.snotify.info(this.instanceId, $.t('log.host.startInstances'))
     this.state = State.PENDING
 
     const fetch = async () => {
-      await this.ec2.startInstances({
+      if (!this.region) {
+        throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      }
+
+      await new EC2({region: this.region}).startInstances({
         InstanceIds: [this.instanceId!],
       }).promise()
 
@@ -273,13 +270,15 @@ export default class Host {
       throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
-    this.switchRegion()
-
     $.snotify.info(this.instanceId, $.t('log.host.stopInstances'))
     this.state = State.STOPPING
 
     const fetch = async () => {
-      await this.ec2.stopInstances({
+      if (!this.region) {
+        throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      }
+
+      await new EC2({region: this.region}).stopInstances({
         InstanceIds: [this.instanceId!],
       }).promise()
 
@@ -299,13 +298,15 @@ export default class Host {
       throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
-    this.switchRegion()
-
     $.snotify.info(this.instanceId, $.t('log.host.terminateInstances'))
     this.state = State.SHUTTING_DOWN
 
     const fetch = async () => {
-      await this.ec2.terminateInstances({
+      if (!this.region) {
+        throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+      }
+
+      await new EC2({region: this.region}).terminateInstances({
         InstanceIds: [this.instanceId!],
       }).promise()
 
@@ -320,13 +321,15 @@ export default class Host {
    * @return {Promise<void>}
    */
   async manageState() {
-    const { ec2, instanceId, state } = this
+    const { instanceId, region, state } = this
 
     if (!instanceId) {
       throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
     }
 
-    this.switchRegion()
+    if (!region) {
+      throw new Exception(ErrorCode.ON_CHANGE_HOST_STATE, this.$id, 'Instance not running.')
+    }
 
     const payload = {
       InstanceIds: [instanceId!],
@@ -337,6 +340,8 @@ export default class Host {
     if (!await this.existsInstance()) {
       return
     }
+
+    const ec2 = new EC2({region})
 
     if (state === null || state === State.PENDING) {
       await ec2.waitFor('instanceRunning', payload).promise()
@@ -370,18 +375,21 @@ export default class Host {
       return
     }
 
-    this.switchRegion()
     try {
       // Checks if instance exists first, otherwise will be stuck in the 'waitFor' for 10 minutes
       if (!await this.existsInstance()) {
         return
       }
 
+      if (!this.region) {
+        throw new Exception(ErrorCode.ON_WAIT_FOR, this.$id, 'Region not found.')
+      }
+
       switch (state) {
 
         case State.TERMINATED:
 
-          await this.ec2.waitFor('instanceTerminated', {
+          await new EC2({region: this.region}).waitFor('instanceTerminated', {
             InstanceIds: [this.instanceId!],
           }).promise()
 
@@ -401,8 +409,10 @@ export default class Host {
    * @return {string | null} AWS ID of the AMI (ami-xxxxxxxxxxxxxxxxx) or null if not found
    */
   private async getImageId(imageName ?: string) {
-    // Switching region to make sure our EC2 service object is in the same region as the EC2 instance (host)
-    this.switchRegion()
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_GET_IMAGE_ID, this.$id, 'Region not found.')
+    }
 
     // If imageName was not provided, uses the default AMI name
     const payload = {
@@ -414,7 +424,7 @@ export default class Host {
       ],
     }
 
-    const data = await this.ec2.describeImages(payload).promise()
+    const data = await new EC2({region: this.region}).describeImages(payload).promise()
 
     if (data.Images &&
       data.Images[0] &&
@@ -453,7 +463,6 @@ export default class Host {
     if (!sgParam) { throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, 'Missing instance information.') }
 
     // Runs the EC2 instance
-    this.switchRegion()
 
     const payload = {
       ImageId: this.imageId!,
@@ -492,7 +501,7 @@ export default class Host {
     }
 
     info('log.host.runInstances')
-    const data = await this.ec2.runInstances(payload).promise()
+    const data = await new EC2({region: this.region}).runInstances(payload).promise()
 
     if (!data || !data.Instances || !data.Instances.length || !data.Instances[0] || !data.Instances[0].InstanceId) {
       throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id)
@@ -507,7 +516,10 @@ export default class Host {
    * @return {Promise<void>}
    */
   private async attachInstanceProfile() {
-    this.switchRegion()
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_ATTACH_INSTANCE_PROFILE, this.$id, 'Region not found.')
+    }
 
     const payload = {
       IamInstanceProfile: {
@@ -520,13 +532,14 @@ export default class Host {
       InstanceIds: [this.instanceId!],
     }
 
+    const ec2 = new EC2({region: this.region})
     // Newly created instances start on a 'pending' status.
     // Must wait for 'running'
     info('log.host.waitFor')
-    await this.ec2.waitFor('instanceRunning', waitPayload).promise()
+    await ec2.waitFor('instanceRunning', waitPayload).promise()
     info('log.host.instanceRunning')
 
-    const data = await this.ec2.associateIamInstanceProfile(payload).promise()
+    const data = await ec2.associateIamInstanceProfile(payload).promise()
 
     if (!data || !data.IamInstanceProfileAssociation) {
       throw new Exception(ErrorCode.ON_ATTACH_INSTANCE_PROFILE, this.$id)
@@ -535,18 +548,15 @@ export default class Host {
   }
 
   // Utility
-  private switchRegion() {
-    if (!this.region) { throw new Exception(ErrorCode.ON_CREATE_HOST, this.$id, 'Missing region information.') }
-    this.ec2 = new EC2({ region: this.region! })
-  }
-
   private async existsInstance(): Promise < Boolean > {
     if (!this.instanceId) {
       return false
     }
+    if (!this.region) {
+      return false
+    }
 
-    this.switchRegion()
-    const data = await this.ec2.describeInstances({
+    const data = await new EC2({region: this.region}).describeInstances({
       InstanceIds: [this.instanceId!],
     }).promise()
 
