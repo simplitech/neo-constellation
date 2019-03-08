@@ -73,8 +73,7 @@ export default abstract class AwsGlobal {
     let ec2 = AwsGlobal.ec2
 
     if (region) {
-      AwsGlobal.switchRegion(region)
-      ec2 = new EC2()
+      ec2 = new EC2({region})
     }
 
     let list: Zone[] = []

@@ -12,6 +12,8 @@ export enum ErrorCode {
     ON_ATTACH_INSTANCE_PROFILE = 202,
     ON_SYNCHRONIZE_HOST = 203,
     ON_CHANGE_HOST_STATE = 204,
+    ON_WAIT_FOR = 205,
+    ON_GET_IMAGE_ID = 206,
     HOST_ALREADY_RUNNING = 210,
 
     // Security Group
