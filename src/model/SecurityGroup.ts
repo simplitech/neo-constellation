@@ -4,6 +4,11 @@ import { Region } from '@/enum/Region'
 import AwsGlobal from '@/model/AwsGlobal'
 import _ from 'lodash'
 import Rule from '@/model/Rule'
+import Exception from '@/model/Exception'
+import { ErrorCode } from '@/enum/ErrorCode'
+import { Severity } from '@/helpers/logger.helper'
+import { RuleType } from '@/enum/RuleType'
+import settle from '@/helpers/settler.helper'
 
 export interface RealSecurityGroup {
   [key: string]: string,
@@ -52,34 +57,53 @@ export default class SecurityGroup {
   async create() {
     const regions = await AwsGlobal.regions()
     let promises = []
-    for (const region of regions) {
 
-      AwsGlobal.switchRegion(region)
-      promises.push(this.createSecurityGroup(new EC2(), region))
+    try {
+
+      for (const region of regions) {
+
+          AwsGlobal.switchRegion(region)
+          promises.push(this.createSecurityGroup(new EC2(), region))
+
+        }
+
+      await settle(promises)
+    } catch (e) {
+
+      // If Security Group is duplicate, we let it pass
+      if (!(e instanceof Exception && e.errorCode === ErrorCode.SECURITY_GROUP_DUPLICATE)) {
+        throw new Exception(ErrorCode.ON_CREATE_SECURITY_GROUP, this.$id, e.name)
+      }
 
     }
-
-    await Promise.all(promises)
 
     this.runningSince = new Date()
 
     promises = []
 
-    // Creates real inbound rules
-    for (const rule of this.inbound) {
-      promises.push(this.createRealInboundRule(rule))
-    }
+    try {
+      // Creates real inbound rules
+      for (const rule of this.inbound) {
+          promises.push(this.createRealRules(RuleType.INBOUND, rule))
+        }
 
-    await Promise.all(promises)
+      await settle(promises)
+    } catch (e) {
+      throw new Exception(ErrorCode.ON_CREATE_RULE, this.$id, e.message)
+    }
 
     promises = []
 
-    // Creates real outbound rules
-    for (const rule of this.outbound) {
-      promises.push(this.createRealOutboundRule(rule))
-    }
+    try {
+      // Creates real outbound rules
+      for (const rule of this.outbound) {
+          promises.push(this.createRealRules(RuleType.OUTBOUND, rule))
+        }
 
-    await Promise.all(promises)
+      await settle(promises)
+    } catch (e) {
+      throw new Exception(ErrorCode.ON_CREATE_RULE, this.$id, e.message)
+    }
 
   }
 
@@ -99,7 +123,7 @@ export default class SecurityGroup {
 
     }
 
-    await Promise.all(promises)
+    await settle(promises)
 
     this.runningSince = null
   }
@@ -124,41 +148,138 @@ export default class SecurityGroup {
 
     }
 
-    await Promise.all(promises)
+    await settle(promises)
 
   }
 
   /**
-   * Adds an inbound access rule to the Security Group
+   * Adds an access rule to the Security Group
    * If network is running, rule will be added to the real security groups aswell
+   * @param {RuleType} type Type of access rule: inbound or outbound
    * @param {Rule} rule Access rule
    * @return {Promise<void>}
    */
-  async addInboundRule(rule: Rule) {
-    this.inbound.push(rule)
+  async addRule(type: RuleType, rule: Rule) {
 
-    if (this.isRunning) {
-      await this.createRealInboundRule(rule)
+    let rules
+
+    switch (type) {
+      case RuleType.INBOUND:
+        rules = this.inbound
+        break
+
+      case RuleType.OUTBOUND:
+        rules = this.outbound
+        break
     }
 
+    if (!rules) {
+      Log(Severity.WARN, `Rule list not found on Security Group '${this.$id}'.`)
+      return
+    }
+
+    rules.push(rule)
+
+    if (this.isRunning) {
+      try {
+
+        await this.createRealRules(type, rule)
+
+      } catch (e) {
+
+        if (e instanceof Exception) {
+          Log(Severity.WARN, `Code ${e.errorCode}: ${e.message}`)
+        } else {
+          Log(Severity.WARN, e.message)
+        }
+      }
+    }
   }
 
   /**
-   * Adds an outbound access rule to the Security Group
-   * If network is running, rule will be added to the real security groups aswell
+   * Removes an access rule from the Security Group
+   * If network is running, rule will be removed from the real security groups aswell
+   * @param {RuleType} type Type of access rule: inbound or outbound
    * @param {Rule} rule Access rule
    * @return {Promise<void>}
    */
-  async addOutboundRule(rule: Rule) {
-    this.outbound.push(rule)
+  async removeRule(type: RuleType, rule: Rule) {
+
+    let rules
+
+    switch (type) {
+      case RuleType.INBOUND:
+        rules = this.inbound
+        break
+
+      case RuleType.OUTBOUND:
+        rules = this.outbound
+        break
+    }
+
+    if (!rules) {
+      Log(Severity.WARN, `Rule list not found on Security Group '${this.$id}'.`)
+      return
+    }
+
+    const index = rules.findIndex( (r) => r.equals(rule))
+    if (index >= 0) {
+      rules.splice(index, 1)
+    } else {
+      Log(Severity.WARN, `Rule to be removed not found on Security Group '${this.$id}'.`)
+    }
 
     if (this.isRunning) {
-      await this.createRealOutboundRule(rule)
+      try {
+
+        await this.destroyRealRules(type, rule)
+
+      } catch (e) {
+
+        if (e instanceof Exception) {
+          Log(Severity.WARN, `Code ${e.errorCode}: ${e.message}`)
+        } else {
+          Log(Severity.WARN, e.message)
+        }
+      }
     }
+  }
+
+  private async createRealRules(type: RuleType, rule: Rule) {
+    if (!this.isRunning) { throw new Exception(ErrorCode.SECURITY_GROUP_NOT_RUNNING, this.$id) }
+    if (!rule.portRangeStart) { throw new Exception(ErrorCode.SECURITY_GROUP_RULE_PORT_MISSING, this.$id) }
+    if (!rule.source) { throw new Exception(ErrorCode.SECURITY_GROUP_RULE_SOURCE_MISSING, this.$id) }
+
+    const promises = []
+
+    for (const realSg of this.realSecurityGroups) {
+      let region = null
+      let id = null
+
+      for (const key in realSg) {
+        if (realSg.hasOwnProperty(key)) {
+          region = key
+          id = realSg[key]
+        }
+      }
+
+      if (!region || !id) { continue }
+
+      AwsGlobal.switchRegion(region as Region)
+
+      promises.push(
+        this.setSecurityGroupRule(
+          new EC2(), type, id, 'tcp', rule.source!, rule.portRangeStart!, rule.portRangeEnd,
+        ),
+      )
+
+    }
+
+    await settle(promises)
 
   }
 
-  private async createRealInboundRule(rule: Rule) {
+  private async destroyRealRules(type: RuleType, rule: Rule) {
     if (!this.isRunning) { abort(`Security Group is not running.`) }
     if (!rule.portRangeStart) { abort(`Missing port information.`) }
     if (!rule.source) { abort(`Missing source information.`) }
@@ -181,72 +302,51 @@ export default class SecurityGroup {
       AwsGlobal.switchRegion(region as Region)
 
       promises.push(
-        this.setSecurityGroupInboundRule(
-          new EC2(), id, 'tcp', rule.source!, rule.portRangeStart!, rule.portRangeEnd,
+        this.unsetSecurityGroupRule(
+          new EC2(), type, id, 'tcp', rule.source!, rule.portRangeStart!, rule.portRangeEnd,
         ),
       )
 
     }
 
-    await Promise.all(promises)
-
-  }
-
-  private async createRealOutboundRule(rule: Rule) {
-    if (!this.isRunning) { abort(`Security Group is not running.`) }
-    if (!rule.portRangeStart) { abort(`Missing port information.`) }
-    if (!rule.source) { abort(`Missing source information.`) }
-
-    const promises = []
-
-    for (const realSg of this.realSecurityGroups) {
-      let region = null
-      let id = null
-
-      for (const key in realSg) {
-        if (realSg.hasOwnProperty(key)) {
-          region = key
-          id = realSg[key]
-        }
-      }
-
-      if (!region || !id) { continue }
-
-      AwsGlobal.switchRegion(region as Region)
-
-      promises.push(
-        this.setSecurityGroupOutboundRule(
-          new EC2(), id, 'tcp', rule.source!, rule.portRangeStart!, rule.portRangeEnd,
-        ),
-      )
-
-    }
-
-    await Promise.all(promises)
+    await settle(promises)
 
   }
 
   private async populateRealSecurityGroup(ec2: EC2, region: Region) {
-    const payload = {
-      GroupNames: [this.$id!],
-    }
-    const data = await ec2.describeSecurityGroups(payload).promise()
+    try {
+      const payload = {
+        GroupNames: [this.$id!],
+      }
+      const data = await ec2.describeSecurityGroups(payload).promise()
 
-    if (!data.SecurityGroups) return
-
-    for (const realSg of data.SecurityGroups) {
-      if (!realSg.GroupId) {
-        throw new Error('Security Group found, but no ID.')
+      if (!data.SecurityGroups) {
+        throw new Exception(
+          ErrorCode.ON_SYNCHRONIZE_SECURITY_GROUP, this.$id, `Security Group not found on region '${region.toString}'.`,
+        )
       }
 
-      this.realSecurityGroups.push({ [region]: realSg.GroupId })
+      for (const realSg of data.SecurityGroups) {
+        if (!realSg.GroupId) {
+          Log(Severity.WARN, `Security Group '${this.$id}' found on region '${region.toString}', but no GroupID.`)
+          continue
+        }
 
+        this.realSecurityGroups.push({ [region]: realSg.GroupId })
+
+      }
+    } catch (e) {
+      throw new Exception(ErrorCode.ON_SYNCHRONIZE_SECURITY_GROUP, this.$id, e.message)
     }
   }
 
   private async createSecurityGroup(ec2: EC2, region: Region) {
 
     try {
+      if (!this.$id || !this.name || !this.networkId) {
+        throw new Exception(ErrorCode.ON_CREATE_SECURITY_GROUP, this.$id, 'Missing information')
+      }
+
       const vpcId = await this.getDefaultVpc(ec2)
 
       const data = await ec2.createSecurityGroup({
@@ -256,10 +356,11 @@ export default class SecurityGroup {
       }).promise()
 
       if (!data || !data.GroupId) {
-        throw new Error('Security Group not created.')
+        throw new Exception(ErrorCode.ON_CREATE_SECURITY_GROUP, this.$id)
       }
 
       this.realSecurityGroups.push({ [region]: data.GroupId })
+      Log(Severity.INFO, `Security Group '${this.$id!}' created on region '${region.toString()}' (${data.GroupId})`)
 
       await ec2.createTags({
         Resources: [
@@ -282,48 +383,105 @@ export default class SecurityGroup {
       }).promise()
 
     } catch (e) {
-      if (e.code === 'InvalidGroup.Duplicate') return
-      throw e
+      if (e.code === 'InvalidGroup.Duplicate') {
+        throw new Exception(ErrorCode.SECURITY_GROUP_DUPLICATE, this.$id, e.message)
+      }
+
+      throw new Exception(ErrorCode.ON_CREATE_SECURITY_GROUP, this.$id, e.message)
     }
 
   }
 
   private async getDefaultVpc(ec2: EC2) {
+    try {
+      const payload = {
+        Filters: [
+          {
+            Name: 'isDefault',
+            Values: ['true'],
+          },
+        ],
+      }
 
-    const payload = {
-      Filters: [
-        {
-          Name: 'isDefault',
-          Values: ['true'],
-        },
-      ],
+      const data = await ec2.describeVpcs(payload).promise()
+
+      if (!data || !data.Vpcs || !data.Vpcs[0] || !data.Vpcs[0].VpcId) {
+        throw new Exception(ErrorCode.ON_GET_DEFAULT_VPC, this.$id)
+      }
+
+      return data.Vpcs[0].VpcId
+    } catch (e) {
+      throw new Exception(ErrorCode.ON_GET_DEFAULT_VPC, this.$id, e.message)
     }
-
-    const data = await ec2.describeVpcs(payload).promise()
-
-    if (!data || !data.Vpcs || !data.Vpcs[0] || !data.Vpcs[0].VpcId) {
-      throw new Error('VPC not found.')
-    }
-
-    return data.Vpcs[0].VpcId
   }
 
   private async deleteSecurityGroup(ec2: EC2) {
-
     try {
       const payload = {
         GroupName: this.$id!,
       }
       await ec2.deleteSecurityGroup(payload).promise()
+
+      Log(Severity.INFO, `Security Group '${this.$id!}' on region ${ec2.config.region} destroyed.`)
     } catch (e) {
-      // TODO: Handle errors
-      Log(2, e.message)
+
+      if (e.code === 'InvalidGroup.NotFound') {
+        Log(Severity.WARN, e.message)
+        return
+      }
+
+      throw new Exception(ErrorCode.ON_DESTROY_SECURITY_GROUP, this.$id, e.message)
     }
 
   }
 
-  private async setSecurityGroupInboundRule(
-    ec2: EC2, id: string, protocol: string, source: string, start: number, end: number | null) {
+  private async setSecurityGroupRule(
+    ec2: EC2, type: RuleType, id: string, protocol: string, source: string, start: number, end: number | null) {
+
+    try {
+      if (protocol !== 'tcp') { throw new Exception(ErrorCode.SECURITY_GROUP_RULE_INVALID_PROTOCOL, this.$id)}
+
+      const payload = {
+        GroupId: id,
+        IpPermissions: [
+          {
+            FromPort: start,
+            IpProtocol: protocol,
+            IpRanges: [
+              {
+                CidrIp: source,
+              },
+            ],
+            ToPort: end || start,
+          },
+        ],
+      }
+
+      switch (type) {
+        case RuleType.INBOUND:
+          await ec2.authorizeSecurityGroupIngress(payload).promise()
+
+          Log(Severity.INFO, `Inbound Rule added to Security Group '${this.$id}' on region '${ec2.config.region}'.`)
+          break
+
+        case RuleType.OUTBOUND:
+          await ec2.authorizeSecurityGroupEgress(payload).promise()
+
+          Log(Severity.INFO, `Outbound Rule added to Security Group '${this.$id}' on region '${ec2.config.region}'.`)
+          break
+      }
+    } catch (e) {
+
+      if (e instanceof Exception) {
+        throw e
+      }
+
+      throw new Exception(ErrorCode.ON_CREATE_RULE, this.$id)
+    }
+  }
+
+  private async unsetSecurityGroupRule(
+    ec2: EC2, type: RuleType, id: string, protocol: string, source: string, start: number, end: number | null) {
 
     if (protocol !== 'tcp') abort('system.error.invalidProtocol')
 
@@ -343,33 +501,19 @@ export default class SecurityGroup {
       ],
     }
 
-    await ec2.authorizeSecurityGroupIngress(payload).promise()
+    switch (type) {
+      case RuleType.INBOUND:
+        await ec2.revokeSecurityGroupIngress(payload).promise()
 
-  }
+        Log(Severity.INFO, `Inbound Rule removed from Security Group '${this.$id}' on region '${ec2.config.region}'.`)
+        break
 
-  private async setSecurityGroupOutboundRule(
-    ec2: EC2, id: string, protocol: string, source: string, start: number, end: number | null) {
+      case RuleType.OUTBOUND:
+        await ec2.revokeSecurityGroupEgress(payload).promise()
 
-    if (protocol !== 'tcp') abort('system.error.invalidProtocol')
-
-    const payload = {
-      GroupId: id,
-      IpPermissions: [
-        {
-          FromPort: start,
-          IpProtocol: protocol,
-          IpRanges: [
-            {
-              CidrIp: source,
-            },
-          ],
-          ToPort: end || start,
-        },
-      ],
+        Log(Severity.INFO, `Outbound Rule removed from Security Group '${this.$id}' on region '${ec2.config.region}'.`)
+        break
     }
-
-    await ec2.authorizeSecurityGroupEgress(payload).promise()
-
   }
 
 }

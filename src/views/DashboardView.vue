@@ -133,7 +133,13 @@
 import {Component, Vue} from 'vue-property-decorator'
 import {Getter, Action} from 'vuex-class'
 import Network from '@/model/Network'
+import SecurityGroup from '@/model/SecurityGroup'
+import Host from '@/model/Host'
 import User from '@/model/User'
+import Rule from '@/model/Rule'
+import {RuleType} from '@/enum/RuleType'
+import {Region} from '@/enum/Region'
+import {Size} from '@/enum/Size'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
 import ModalRemoveApplicationBlueprint from '../components/modals/ModalRemoveApplicationBlueprint.vue'
 import {$, sleep} from '@/simpli'
@@ -181,11 +187,54 @@ export default class DashboardView extends Vue {
 
   async test() {
     const net = new Network()
-    await net.get('4wy8kD6xF')
+    await net.persist()
 
-    console.log(net)
+    const ir = new Rule()
+    ir.source = '0.0.0.0/0'
+    ir.portRangeStart = 8080
+    ir.portRangeEnd = 8443
 
-    net.delete()
+    const sg = new SecurityGroup()
+    sg.name = 'SuperSG'
+    await sg.addRule(RuleType.INBOUND, ir)
+
+    await net.addSecurityGroup(sg)
+
+    const host1 = new Host()
+    host1.region = Region.SA_EAST_1
+    host1.securityGroup = net.securityGroups[0]
+    host1.size = Size.T2_NANO
+    host1.name = 'SuperHost1'
+
+    await net.addHost(host1)
+
+    const host2 = new Host()
+    host2.region = Region.US_EAST_1
+    host2.securityGroup = net.securityGroups[0]
+    host2.size = Size.T2_NANO
+    host2.name = 'SuperHost2'
+
+    await net.addHost(host2)
+
+    const host3 = new Host()
+    host3.region = Region.US_EAST_2
+    host3.securityGroup = net.securityGroups[0]
+    host3.size = Size.T2_NANO
+    host3.name = 'SuperHost3'
+
+    await net.addHost(host3)
+
+    await net.build()
+
+    /*const list = await new Network().list()
+
+    if (list) {
+      for (const net of list) {
+
+        await net.delete()
+      }
+    }*/
   }
+
 }
 </script>
