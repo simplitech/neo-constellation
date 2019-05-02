@@ -3,13 +3,14 @@
          @close="closeEvent">
     <div class="horiz gutter-10">
       <input-text autofocus class="weight-1 contrast required"
+                  type="text"
                   :label="$t('classes.ApplicationBlueprint.columns.name')"
                   v-model="appBlueprint.name"/>
 
       <input-select class="weight-1 contrast required"
                     :label="$t('classes.ApplicationBlueprint.columns.role')"
-                    v-model="roleComputed"
-                    :items="roles"
+                    v-model="roleResource"
+                    :items="allRole.items"
       />
     </div>
 
@@ -45,17 +46,18 @@
 
     <template v-if="type === Type.DOCKER_REGISTER">
       <input-text class="contrast"
+                  type="text"
                   :label="$t('classes.ApplicationBlueprint.columns.repositoryUrl')"
                   v-model="appBlueprint.repositoryUrl"/>
 
       <div class="horiz gutter-10">
         <input-textarea class="weight-1 contrast"
                         :label="$t('classes.ApplicationBlueprint.columns.buildScript')"
-                        v-model="appBlueprint.buildScript"/>
+                        v-model="appBlueprint.stringBuildScript"/>
 
         <input-textarea class="weight-1 contrast"
                         :label="$t('classes.ApplicationBlueprint.columns.runCommands')"
-                        v-model="appBlueprint.runCommands"/>
+                        v-model="appBlueprint.stringRunCommands"/>
       </div>
     </template>
 
@@ -66,7 +68,7 @@
 
       <input-textarea class="contrast"
                       :label="$t('classes.ApplicationBlueprint.columns.runCommands')"
-                      v-model="appBlueprint.runCommands"/>
+                      v-model="appBlueprint.stringRunCommands"/>
     </template>
 
     <hr>
@@ -80,7 +82,7 @@
 
 <script lang="ts">
   import {Component, Prop, Vue} from 'vue-property-decorator'
-  import {$, ResourceObject} from '../../simpli'
+  import {$, ObjectCollection, IResource} from '../../simpli'
   import ApplicationBlueprint from '../../model/ApplicationBlueprint'
   import {Role} from '../../enum/Role'
 
@@ -96,23 +98,19 @@
     Role = Role
     Type = Type
 
-    role: ResourceObject | null = null
     type: Type | null = null
 
-    get roleComputed() {
-      return this.role
-    }
+    allRole = new ObjectCollection(Role).prependNull('')
 
-    set roleComputed(val: ResourceObject | null) {
-      this.appBlueprint.role = val && val.$tag as Role
-      this.role = val
+    get roleResource() {
+      return this.allRole.get(this.appBlueprint.role)
     }
-
-    roles: ResourceObject[] = Object.values(Role).map((role, index) => ({$id: index, $tag: role}))
+    set roleResource(val: IResource | null) {
+      this.appBlueprint.role = val && val.$id as Role || null
+    }
 
     closeEvent() {
       this.appBlueprint = new ApplicationBlueprint()
-      this.role = null
       this.type = null
 
       this.$emit('close')
@@ -120,7 +118,6 @@
 
     openEvent() {
       this.appBlueprint = new ApplicationBlueprint()
-      this.role = null
       this.type = null
 
       this.$emit('open')

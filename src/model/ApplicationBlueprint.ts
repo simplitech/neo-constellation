@@ -23,6 +23,33 @@ export default class ApplicationBlueprint extends S3Wrapper {
 
   runCommands: string[] = []
 
+  get htmlBuildScript() {
+    return this.stringBuildScript.replace(/\n/gm, '<br>')
+  }
+
+  get stringBuildScript() {
+    if (this.buildScript) {
+      return this.buildScript.join('\n')
+    }
+    return ''
+  }
+
+  set stringBuildScript(val: string) {
+    this.buildScript = val.split('\n')
+  }
+
+  get htmlRunCommands() {
+    return this.stringRunCommands.replace(/\n/gm, '<br>')
+  }
+
+  get stringRunCommands() {
+    return this.runCommands.join('\n')
+  }
+
+  set stringRunCommands(val: string) {
+    this.runCommands = val.split('\n')
+  }
+
   async list(): Promise<this[] | undefined> {
     const fetch = async () => await super.list(ApplicationBlueprint) || []
     return $.await.run(fetch, 'listApplicationBlueprint')

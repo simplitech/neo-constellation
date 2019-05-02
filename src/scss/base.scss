@@ -569,11 +569,11 @@ button, input[type=submit], .btn {
   }
 
   &.success {
-    @extend .pal-white-70.text;
+    @extend .pal-black-70.text;
     @extend .pal-success.bg;
 
     &:hover {
-      @extend .pal-white.text;
+      @extend .pal-black-70.text;
       @extend .pal-success.bg.lighten;
     }
 
@@ -587,7 +587,7 @@ button, input[type=submit], .btn {
 
       &:hover {
         @extend .pal-success.bg;
-        @extend .pal-white.text;
+        @extend .pal-black-70.text;
       }
     }
 
@@ -598,7 +598,7 @@ button, input[type=submit], .btn {
 
       &:hover {
         @extend .pal-success.bg;
-        @extend .pal-white.text;
+        @extend .pal-black-70.text;
       }
 
       &:focus {

@@ -140,6 +140,8 @@ export default {
     totalLines: '{total} total lines',
     version: 'Version',
     onlyIfWantChangePassword: 'Fill this field only if you want to change the password',
+    noResultFound: 'No result found',
+    emptyList: 'Empty list',
   },
 
   dateFormat: {
@@ -228,15 +230,10 @@ export default {
       commands: 'Commands',
       containers: 'Containers',
     },
-    persistHost: {
-      title: 'Create Host',
-      titleAlt: 'Edit Host',
-      newNetwork: 'New Network',
-    },
-    cmd: {
-      title: 'Commands',
-      command: 'Run new command:',
-      sendCommand: 'Send Command',
+    getAppBlueprint: {
+      title: 'Application',
+      delete: 'Delete',
+      cloneAndEdit: 'Clone and Edit',
     },
   },
 

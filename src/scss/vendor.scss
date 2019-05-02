@@ -32,6 +32,15 @@
       top: 4px;
     }
   }
+  .multiselect__option {
+    font-weight: bold;
+    &.multiselect__option--highlight {
+      color: white !important;
+    }
+    &.multiselect__option--selected {
+      color: white !important;
+    }
+  }
 }
 
 // Vue Tooltip

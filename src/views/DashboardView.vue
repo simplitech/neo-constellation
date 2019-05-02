@@ -110,10 +110,10 @@
 
           <div class="horiz gutter-10">
             <button class="contrast icon">
-              <i class="fas fa-edit"></i>
+              <i class="fas fa-edit" @click="editApplicationBlueprint(appBlueprint)"></i>
             </button>
 
-            <button class="contrast icon">
+            <button class="contrast icon" @click="openApplicationBlueprint(appBlueprint)">
               <i class="fas fa-eye"></i>
             </button>
 
@@ -142,7 +142,7 @@ import {Region} from '@/enum/Region'
 import {Size} from '@/enum/Size'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
 import ModalRemoveApplicationBlueprint from '../components/modals/ModalRemoveApplicationBlueprint.vue'
-import {$, sleep} from '@/simpli'
+import {$, pushByName} from '@/simpli'
 
 @Component({
   components: {ModalRemoveApplicationBlueprint},
@@ -165,19 +165,27 @@ export default class DashboardView extends Vue {
   }
 
   async addEmptyHost() {
-    $.modal.open('persistNetwork')
+    this.$modal.open('persistNetwork')
   }
 
   async addHostFromStack() {
     /**/
   }
 
+  openApplicationBlueprint(appBlueprint: ApplicationBlueprint) {
+    pushByName('getAppBlueprint', appBlueprint.$id)
+  }
+
+  editApplicationBlueprint() {
+    /**/
+  }
+
   async newApplicationBlueprint() {
-    $.modal.open('persistApplicationBlueprint')
+    this.$modal.open('persistApplicationBlueprint')
   }
 
   async removeApplicationBlueprint(item: ApplicationBlueprint) {
-    $.modal.open('removeApplicationBlueprint', item)
+    this.$modal.open('removeApplicationBlueprint', item)
   }
 
   async confirmApplicationBlueprint(item: ApplicationBlueprint) {

@@ -3,8 +3,8 @@
 @import "simplipack/modal";
 
 $primary-color: #21084C;
-$secondary-color: #968BEE;
-$tertiary-color: #3B0967;
+$secondary-color: #59BF00;
+$tertiary-color: #968BEE;
 
 $light-primary-color: lighten($primary-color, 20%);
 $light-secondary-color: lighten($secondary-color, 20%);
@@ -14,7 +14,7 @@ $dark-primary-color: darken($primary-color, 20%);
 $dark-secondary-color: darken($secondary-color, 20%);
 $dark-tertiary-color: darken($tertiary-color, 20%);
 
-$success-color: #6da544;
+$success-color: #59BF00;
 $warning-color: #ffda44;
 $danger-color: #cd2626;
 

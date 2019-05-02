@@ -12,8 +12,9 @@ import {RouterOptions} from 'vue-router'
 import DefaultPanelLayout from '@/views/layouts/DefaultPanelLayout.vue'
 import SignInView from '@/views/SignInView.vue'
 import DashboardView from '@/views/DashboardView.vue'
-import PersistNodeView from '@/views/PersistNodeView.vue'
-import LogDashboard from '@/views/LogDashboard.vue'
+import GetAppBlueprintView from '@/views/get/GetAppBlueprintView.vue'
+// import PersistNodeView from '@/views/PersistNodeView.vue'
+// import LogDashboard from '@/views/LogDashboard.vue'
 
 /**
  * VUE Router Configuration
@@ -34,8 +35,14 @@ export const router: RouterOptions = {
           name: 'dashboard',
           component: DashboardView,
         },
-        {path: '/node/new', component: PersistNodeView},
-        {path: '/log', component: LogDashboard},
+        {
+          path: '/app-blueprint/:id',
+          name: 'getAppBlueprint',
+          component: GetAppBlueprintView,
+          props: true,
+        },
+        // {path: '/node/new', component: PersistNodeView},
+        // {path: '/log', component: LogDashboard},
       ],
     },
     {path: '/', redirect: '/sign-in'},
