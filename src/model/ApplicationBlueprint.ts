@@ -55,8 +55,9 @@ export default class ApplicationBlueprint extends S3Wrapper {
     return $.await.run(fetch, 'listApplicationBlueprint')
   }
 
-  async persist(): Promise<void> {
-    await super.persist()
+  async persist(): Promise<string> {
+    const id = await super.persist()
     syncAppBlueprints()
+    return id
   }
 }

@@ -2,6 +2,9 @@
 @import "variables";
 
 .modal {
+  .modal-bg {
+    background: rgba(255, 255, 255, 0.4);
+  }
   .modal-scroll {
     overflow-y: auto;
     width: unset;
@@ -10,11 +13,11 @@
         .modal-header {
           background: $secondary-color !important;
           .modal-title {
-            color: $primary-color !important;
+            color: black !important;
             font-weight: bold;
           }
           .close-icon {
-            color: $primary-color !important;
+            color: black !important;
           }
         }
       }

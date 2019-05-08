@@ -105,8 +105,8 @@ export default class Network extends S3Wrapper {
     return $.await.run(fetch, 'listNetwork')
   }
 
-  async persist(): Promise<void> {
-    await super.persist()
+  async persist(): Promise<string> {
+    return await super.persist()
     // syncNetworks()
   }
 

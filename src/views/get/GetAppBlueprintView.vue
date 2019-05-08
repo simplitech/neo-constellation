@@ -8,13 +8,21 @@
         </h2>
       </div>
       <div class="col">
-        <button class="primary">
-          {{$t('view.getAppBlueprint.delete')}}
+        <button class="primary" @click="editApplicationBlueprint(appBlueprint)">
+          <i class="fa fa-edit"></i>
+          {{$t('view.getAppBlueprint.edit')}}
         </button>
       </div>
       <div class="col">
-        <button class="primary">
-          {{$t('view.getAppBlueprint.cloneAndEdit')}}
+        <button class="primary" @click="cloneApplicationBlueprint(appBlueprint)">
+          <i class="fa fa-clone"></i>
+          {{$t('view.getAppBlueprint.editAndClone')}}
+        </button>
+      </div>
+      <div class="col">
+        <button class="primary" @click="removeApplicationBlueprint(appBlueprint)">
+          <i class="fa fa-trash"></i>
+          {{$t('view.getAppBlueprint.delete')}}
         </button>
       </div>
     </div>
@@ -102,25 +110,69 @@
       </div>
     </await>
 
+    <modal-persist-application-blueprint @submit="persistSubmit"/>
+    <modal-remove-application-blueprint @confirm="confirmApplicationBlueprint"/>
   </section>
 </template>
 
 <script lang="ts">
-  import {Component, Prop, Vue} from 'vue-property-decorator'
+  import {Component, Prop, Watch, Vue} from 'vue-property-decorator'
   import {Getter, Action} from 'vuex-class'
   import ApplicationBlueprint from '@/model/ApplicationBlueprint'
+  import ModalPersistApplicationBlueprint, {Mode} from '@/components/modals/ModalPersistApplicationBlueprint.vue'
+  import {pushByName, clone} from 'simpli-web-sdk'
+  import ModalRemoveApplicationBlueprint from '@/components/modals/ModalRemoveApplicationBlueprint.vue'
 
-  @Component
+  @Component({
+    components: {ModalPersistApplicationBlueprint, ModalRemoveApplicationBlueprint},
+  })
   export default class GetAppBlueprintView extends Vue {
     @Prop({type: String}) id?: string
 
     appBlueprint = new ApplicationBlueprint()
 
     async mounted() {
-      if (this.id) {
-        await this.$await.run(() => this.appBlueprint.get(this.id), 'get')
+      await this.populate()
+    }
+
+    async populate() {
+      const {id} = this
+      if (id) {
+        await this.$await.run(() => this.appBlueprint.get(id), 'get')
       }
       this.$await.done('get')
+    }
+
+    @Watch('id')
+    async idEvent() {
+      await this.populate()
+    }
+
+    editApplicationBlueprint(item: ApplicationBlueprint) {
+      const model = clone(item)
+      this.$modal.open('persistApplicationBlueprint', {model})
+    }
+
+    cloneApplicationBlueprint(item: ApplicationBlueprint) {
+      const model = clone(item)
+      this.$modal.open('persistApplicationBlueprint', {model, toClone: true})
+    }
+
+    removeApplicationBlueprint(item: ApplicationBlueprint) {
+      this.$modal.open('removeApplicationBlueprint', item)
+    }
+
+    async confirmApplicationBlueprint(item: ApplicationBlueprint) {
+      await item.delete()
+      this.$router.push('/dashboard')
+    }
+
+    async persistSubmit(model: ApplicationBlueprint) {
+      if (model.$id === this.id) {
+        await this.populate()
+      } else if (model.$id) {
+        pushByName('getAppBlueprint', model.$id)
+      }
     }
   }
 </script>

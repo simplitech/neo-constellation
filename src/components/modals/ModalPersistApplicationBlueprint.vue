@@ -1,6 +1,6 @@
 <template>
-  <modal :title="$t('modal.persistApplicationBlueprint.title')" name="persistApplicationBlueprint" @open="openEvent"
-         @close="closeEvent">
+  <modal :title="title" name="persistApplicationBlueprint" @open="openEvent"
+         @close="closeEvent" :closeOutside="false">
     <div class="horiz gutter-10">
       <input-text autofocus class="weight-1 contrast required"
                   type="text"
@@ -44,7 +44,7 @@
       </div>
     </div>
 
-    <template v-if="type === Type.DOCKER_REGISTER">
+    <template v-if="type === Type.REPOSITORY_AND_BUILD_SCRIPT">
       <input-text class="contrast"
                   type="text"
                   :label="$t('classes.ApplicationBlueprint.columns.repositoryUrl')"
@@ -61,8 +61,9 @@
       </div>
     </template>
 
-    <template v-else-if="type === Type.REPOSITORY_AND_BUILD_SCRIPT">
+    <template v-else-if="type === Type.DOCKER_REGISTER">
       <input-text class="contrast"
+                  type="text"
                   :label="$t('classes.ApplicationBlueprint.columns.dockerImageId')"
                   v-model="appBlueprint.dockerImageId"/>
 
@@ -73,9 +74,9 @@
 
     <hr>
 
-    <await name="submit" class="horiz items-center gutter-10">
+    <await name="submit" spinnerColor="#59BF00" class="horiz items-center gutter-10">
       <button type="button" @click="close">{{ $t('app.cancel') }}</button>
-      <button type="button" class="success" @click="$await.run(submit, 'submit')">{{ $t('app.create') }}</button>
+      <button type="button" class="success" @click="$await.run(submit, 'submit')">{{ buttonText }}</button>
     </await>
   </modal>
 </template>
@@ -86,9 +87,20 @@
   import ApplicationBlueprint from '../../model/ApplicationBlueprint'
   import {Role} from '../../enum/Role'
 
-  enum Type {
-    DOCKER_REGISTER,
-    REPOSITORY_AND_BUILD_SCRIPT,
+  export enum Type {
+    DOCKER_REGISTER = 1,
+    REPOSITORY_AND_BUILD_SCRIPT = 2,
+  }
+
+  export enum Mode {
+    CREATE = 1,
+    EDIT = 2,
+    CLONE = 3,
+  }
+
+  export interface ModalOptions {
+    model?: ApplicationBlueprint
+    toClone?: boolean
   }
 
   @Component
@@ -97,8 +109,10 @@
 
     Role = Role
     Type = Type
+    Mode = Mode
 
     type: Type | null = null
+    mode: Mode = Mode.CREATE
 
     allRole = new ObjectCollection(Role).prependNull('')
 
@@ -109,6 +123,38 @@
       this.appBlueprint.role = val && val.$id as Role || null
     }
 
+    get title() {
+      if (this.mode === Mode.CREATE) {
+        return this.$t('modal.persistApplicationBlueprint.titleCreate')
+      }
+
+      if (this.mode === Mode.EDIT) {
+        return this.$t('modal.persistApplicationBlueprint.titleEdit')
+      }
+
+      if (this.mode === Mode.CLONE) {
+        return this.$t('modal.persistApplicationBlueprint.titleClone')
+      }
+
+      return this.$t('modal.persistApplicationBlueprint.title')
+    }
+
+    get buttonText() {
+      if (this.mode === Mode.CREATE) {
+        return this.$t('app.create')
+      }
+
+      if (this.mode === Mode.EDIT) {
+        return this.$t('app.edit')
+      }
+
+      if (this.mode === Mode.CLONE) {
+        return this.$t('app.clone')
+      }
+
+      return this.$t('app.create')
+    }
+
     closeEvent() {
       this.appBlueprint = new ApplicationBlueprint()
       this.type = null
@@ -116,9 +162,26 @@
       this.$emit('close')
     }
 
-    openEvent() {
-      this.appBlueprint = new ApplicationBlueprint()
-      this.type = null
+    openEvent(options: ModalOptions = {}) {
+      this.appBlueprint = options.model || new ApplicationBlueprint()
+
+      if (this.appBlueprint.repositoryUrl) {
+        this.type = Type.REPOSITORY_AND_BUILD_SCRIPT
+      } else if (this.appBlueprint.dockerImageId) {
+        this.type = Type.DOCKER_REGISTER
+      } else {
+        this.type = null
+      }
+
+      if (options.toClone) {
+        this.mode = Mode.CLONE
+        this.appBlueprint.$id = null
+      } else if (options.model && options.model.$id) {
+        this.mode = Mode.EDIT
+      } else {
+        this.mode = Mode.CREATE
+        this.appBlueprint.$id = null
+      }
 
       this.$emit('open')
     }
@@ -130,6 +193,7 @@
     async submit() {
       await this.appBlueprint.validate()
       await this.appBlueprint.persist()
+      this.$emit('submit', this.appBlueprint)
       this.close()
     }
   }

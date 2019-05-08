@@ -4,15 +4,15 @@
          @open="openEvent"
          @close="closeEvent"
   >
-    <div>
+    <h4>
       {{ $t('modal.removeApplicationBlueprint.body') }}
-    </div>
+    </h4>
 
     <hr>
 
-    <await name="submit" class="horiz items-center gutter-10">
+    <await name="submit" spinnerColor="#59BF00" class="horiz items-center gutter-10">
       <button type="button" @click="cancel">{{ $t("app.cancel") }}</button>
-      <button type="button" @click="confirm" class="success">{{ $t("app.confirm") }}</button>
+      <button type="button" @click="confirm" class="danger">{{ $t("app.confirm") }}</button>
     </await>
   </modal>
 </template>

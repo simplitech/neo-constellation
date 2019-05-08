@@ -8,7 +8,7 @@
 
     <hr>
 
-    <await name="submit" class="horiz items-center gutter-10">
+    <await name="submit" spinnerColor="#59BF00" class="horiz items-center gutter-10">
       <button type="button" @click="close">{{ $t("app.cancel") }}</button>
       <button type="button" class="success" @click="$await.run(submit, 'submit')">{{ $t("app.create") }}</button>
     </await>

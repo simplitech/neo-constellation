@@ -126,6 +126,10 @@ export default {
     terminate: 'Terminate',
     menu: 'Menu',
     add: 'Add',
+    edit: 'Edit',
+    clone: 'Clone',
+    view: 'View',
+    delete: 'Delete',
     create: 'Create',
     confirm: 'Confirm',
     back: 'Back',
@@ -232,8 +236,9 @@ export default {
     },
     getAppBlueprint: {
       title: 'Application',
+      edit: 'Edit',
+      editAndClone: 'Edit and clone',
       delete: 'Delete',
-      cloneAndEdit: 'Clone and Edit',
     },
   },
 
@@ -242,7 +247,10 @@ export default {
       title: 'Create Network',
     },
     persistApplicationBlueprint: {
-      title: 'Create Application',
+      title: 'Application',
+      titleCreate: 'Create Application',
+      titleEdit: 'Edit Application',
+      titleClone: 'Clone Application',
       dockerRegister: 'Docker Register',
       repositoryAndBuildScript: 'Repository and Build Script',
       sourceCodeFormat: 'Source Code Format',

@@ -6,6 +6,7 @@ import {
     info,
     getUser,
     getExtension,
+    ClassType,
 } from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
 import {plainToClass, plainToClassFromExist, classToPlain, Type} from 'class-transformer'
@@ -60,6 +61,7 @@ export abstract class S3Wrapper extends Model {
                 Bucket: getUser().bucketName,
             }).promise()
 
+            return this.$id
         } catch (e) {
           // TODO: Handle errors
           throw e
@@ -88,7 +90,7 @@ export abstract class S3Wrapper extends Model {
           }
     }
 
-    async list(type: typeof S3Wrapper) {
+    async list(type: ClassType<S3Wrapper>) {
 
         try {
 

@@ -7,7 +7,6 @@
       </transition>
 
       <modal-persist-network/>
-      <modal-persist-application-blueprint/>
     </main>
   </await>
 </template>

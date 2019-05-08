@@ -58,5 +58,8 @@ $.modal.defaultBackgroundTransition = 'fade'
 $.modal.defaultClosable = true
 $.modal.defaultCloseOutside = true
 
+$.tip.defaultTransition = 'fade'
+$.tip.defaultWidth = 100
+
 AWS.config.update({region: AwsGlobal.DEFAULT_REGION})
 // AWS.config.logger = console

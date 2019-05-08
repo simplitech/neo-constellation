@@ -1,3 +1,4 @@
+import {SnotifyPosition} from 'vue-snotify'
 <template>
   <div id="app">
     <transition name="blur" mode="out-in">
@@ -13,8 +14,8 @@
 </style>
 
 <script lang="ts">
-  import { Component, Vue, Watch } from 'vue-property-decorator'
-  import {Action, Getter} from 'vuex-class'
+  import {Component, Vue} from 'vue-property-decorator'
+  import {Action} from 'vuex-class'
   import {$, ToastDefaultConfig, ToastGlobalConfig, ToastStyle} from '@/simpli'
 
   const metaInfo = () => ({
@@ -45,13 +46,16 @@
     }
 
     created() {
+      const toastDefaultConfig = ToastDefaultConfig
+      toastDefaultConfig.position = 'leftTop' as any
+
       this.onSignIn(this.signInEvent)
       this.onAuth(this.authEvent)
       this.onSignOut(this.signOutEvent)
 
       this.$snotify.setDefaults({
         global: ToastGlobalConfig,
-        toast: ToastDefaultConfig,
+        toast: toastDefaultConfig,
       })
     }
   }
