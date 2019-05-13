@@ -5,12 +5,13 @@ nav {
   @extend .f-bold;
   @extend .pal-white-50.text;
 
+  user-select: none;
   position: relative;
   width: 100vw;
 
-  font-size: 16px;
+  font-size: 12px;
 
-  height: 80px;
+  height: 100px;
   display: flex;
   align-content: center;
 
@@ -24,6 +25,10 @@ nav {
 
   .brand {
     margin: 16px 24px;
+
+    display: flex;
+    justify-content: center;
+    align-items: center;
 
     .btn {
       padding: 0;
@@ -48,11 +53,6 @@ nav {
   .slot-1 {
     flex: 1;
     margin: auto 16px;
-    text-align: right;
-
-    button {
-      @extend .flat;
-    }
 
     @media screen and (max-width: $display-medium) {
       display: none;

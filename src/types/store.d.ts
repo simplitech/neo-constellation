@@ -21,6 +21,8 @@ export interface RootState {
 export interface AuthState {
   accessKeyId: string | null,
   secretAccessKey: string | null,
+  environmentId: string | null,
+  environment: Network | null,
   user: User,
   networks: Network[],
   appBlueprints: ApplicationBlueprint[],

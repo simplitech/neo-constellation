@@ -45,7 +45,7 @@ export default class User extends Model {
       }
     }
 
-    await $.await.run(fetch, 'populateUser', 1000)
+    await $.await.run(fetch, 'authentication', 1000)
   }
 
 }

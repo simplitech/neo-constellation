@@ -1,5 +1,5 @@
 <template>
-  <await name="populateUser" spinner="FadeLoader">
+  <await name="authentication" spinner="FadeLoader">
     <main>
       <navbar/>
       <transition name="fade-down" mode="out-in">

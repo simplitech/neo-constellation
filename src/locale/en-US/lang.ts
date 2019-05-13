@@ -121,6 +121,7 @@ export default {
     subtitle: 'Console',
     anonymous: 'Anonymous',
     logout: 'Logout',
+    exit: 'Exit',
     turnOn: 'Turn On',
     turnOff: 'Turn Off',
     terminate: 'Terminate',
@@ -212,6 +213,14 @@ export default {
     503: 'Service Unavailable',
     504: 'Gateway Timeout',
     505: 'Http Version Not Supported',
+  },
+
+  nav: {
+    hosts: 'Hosts',
+    logsDashboard: 'Logs Dashboards',
+    securityGroups: 'Sercurity Groups',
+    configurationFiles: 'Configuration Files',
+    deleteNetwork: 'Delete Network',
   },
 
   view: {
@@ -313,6 +322,7 @@ export default {
         $id: 'ID',
         name: 'Network Name',
         hosts: 'Hosts',
+        runningSince: 'RunningSince',
       },
     },
     ApplicationBlueprint: {

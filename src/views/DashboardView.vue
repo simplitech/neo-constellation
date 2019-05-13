@@ -1,5 +1,5 @@
 <template>
-  <section class="container">
+  <section class="container" v-if="!hasEnvironment">
 
     <transition-expand>
       <await class="min-h-100" init name="listNetwork" effect="fade-up">
@@ -28,7 +28,7 @@
         </div>
 
         <div class="panel des-ml-50 tab-ml-30 mb-10" v-for="(network, i) in networks" :key="network.$id">
-          <div class="panel-header no-body hoverable">
+          <div class="panel-header no-body hoverable" @click="enterEnvironment(network.$id)">
             <div class="panel-title">
               <i class="fas fa-network-wired"></i>
             </div>
@@ -186,17 +186,27 @@ export default class DashboardView extends Vue {
   @Getter('auth/user') user!: User
   @Getter('auth/networks') networks!: Network[]
   @Getter('auth/appBlueprints') appBlueprints!: ApplicationBlueprint[]
+  @Getter('auth/hasEnvironment') hasEnvironment!: boolean
 
   @Action('auth/syncNetworks') syncNetworks!: Function
   @Action('auth/syncAppBlueprints') syncAppBlueprints!: Function
+  @Action('auth/enterEnvironment') enterEnvironment!: Function
+
+  async created() {
+    if (this.hasEnvironment) {
+      this.$router.replace('/network')
+    }
+  }
 
   async mounted() {
     await this.populate()
   }
 
   async populate() {
-    this.syncNetworks()
-    this.syncAppBlueprints()
+    if (!this.hasEnvironment) {
+      this.syncNetworks()
+      this.syncAppBlueprints()
+    }
   }
 
   async addEmptyHost() {

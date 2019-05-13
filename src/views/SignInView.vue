@@ -19,7 +19,7 @@
               </div>
             </div>
 
-            <await name="populateUser">
+            <await name="authentication">
               <input-text
                       type="password"
                       selectall
@@ -32,7 +32,6 @@
                       v-model="request.secretAccessKey"
               >{{$t('view.login.form.accessSecret')}}
               </input-text>
-
             </await>
 
             <div class="panel-footer items-end">

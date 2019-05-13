@@ -15,6 +15,9 @@ const state: AuthState = {
   accessKeyId: null,
   secretAccessKey: null,
 
+  environmentId: null,
+  environment: null,
+
   user: new User(),
 
   networks: [],
@@ -32,8 +35,13 @@ const state: AuthState = {
 // getters
 const getters: GetterTree<AuthState, RootState> = {
   isLogged: ({accessKeyId, secretAccessKey}) => !!accessKeyId && !!secretAccessKey,
+  hasEnvironment: ({environmentId, environment}) => !!environmentId,
+
   accessKeyId: ({accessKeyId}) => accessKeyId,
   secretAccessKey: ({secretAccessKey}) => secretAccessKey,
+
+  environmentId: ({environmentId}) => environmentId,
+  environment: ({environment}) => environment,
 
   user: ({user}) => user,
 
@@ -72,7 +80,12 @@ const actions: ActionTree<AuthState, RootState> = {
 
     $.snotify.info(user.username, $.t('system.info.welcome'))
 
-    const uri = getters.cachePath && $.route.name !== 'signIn' ? getters.cachePath : '/dashboard'
+    let defaultUri = '/dashboard'
+    if (getters.hasEnvironment) {
+      defaultUri = '/network'
+    }
+
+    const uri = getters.cachePath && $.route.name !== 'signIn' ? getters.cachePath : defaultUri
     push(uri)
 
     commit('SET_CACHE_PATH', undefined)
@@ -100,6 +113,8 @@ const actions: ActionTree<AuthState, RootState> = {
 
       commit('POPULATE_USER', user)
 
+      await dispatch('initEnvironment')
+
       state.eventListener.auth.forEach((item) => item())
     } else {
       error('system.error.unauthorized')
@@ -122,6 +137,39 @@ const actions: ActionTree<AuthState, RootState> = {
       AWS.config.update({accessKeyId, secretAccessKey})
       AwsGlobal.reset()
     }
+  },
+
+  initEnvironment: async ({commit, getters}) => {
+    commit('POPULATE_ENVIRONMENT_ID')
+
+    if (getters.environmentId) {
+      const network = new Network()
+      await $.await.run(() => network.get(getters.environmentId), 'authentication')
+
+      if (network && network.$id) {
+        commit('POPULATE_ENVIRONMENT', network)
+      } else {
+        commit('FORGET_ENVIRONMENT')
+      }
+    }
+  },
+
+  enterEnvironment: async ({commit, getters, dispatch}, id: string) => {
+    localStorage.setItem('environmentId', id)
+
+    push('/network')
+
+    await dispatch('initEnvironment')
+
+    if (getters.hasEnvironment) {
+      $.snotify.info(`Entering into environment ${getters.environmentId}`)
+    }
+  },
+
+  exitEnvironment: async ({commit, dispatch}) => {
+    commit('FORGET_ENVIRONMENT')
+
+    push('/dashboard')
   },
 
   /**
@@ -223,6 +271,16 @@ const mutations: MutationTree<AuthState> = {
     state.secretAccessKey = localStorage.getItem('secretAccessKey') || null
   },
 
+  // Populate environment ID mutation
+  POPULATE_ENVIRONMENT_ID(state) {
+    state.environmentId = localStorage.getItem('environmentId') || null
+  },
+
+  // Populate environment mutation
+  POPULATE_ENVIRONMENT(state, val: Network) {
+    state.environment = val
+  },
+
   // Populate user mutation
   POPULATE_USER(state, user: User) {
     state.user = user
@@ -258,6 +316,14 @@ const mutations: MutationTree<AuthState> = {
     localStorage.removeItem('secretAccessKey')
 
     AWS.config.update({})
+  },
+
+  // Forget environment mutation
+  FORGET_ENVIRONMENT(state) {
+    localStorage.removeItem('environmentId')
+
+    state.environmentId = null
+    state.environment = null
   },
 
   // Set cachePath mutation

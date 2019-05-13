@@ -12,6 +12,7 @@ import {RouterOptions} from 'vue-router'
 import DefaultPanelLayout from '@/views/layouts/DefaultPanelLayout.vue'
 import SignInView from '@/views/SignInView.vue'
 import DashboardView from '@/views/DashboardView.vue'
+import NetworkView from '@/views/NetworkView.vue'
 import GetAppBlueprintView from '@/views/get/GetAppBlueprintView.vue'
 // import PersistNodeView from '@/views/PersistNodeView.vue'
 // import LogDashboard from '@/views/LogDashboard.vue'
@@ -34,6 +35,11 @@ export const router: RouterOptions = {
           path: '/dashboard',
           name: 'dashboard',
           component: DashboardView,
+        },
+        {
+          path: '/network',
+          name: 'network',
+          component: NetworkView,
         },
         {
           path: '/app-blueprint/:id',

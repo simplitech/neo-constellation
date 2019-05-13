@@ -7,7 +7,7 @@
 
 import Vue from 'vue'
 import AWS, {EC2} from 'aws-sdk'
-import {$} from '@/simpli'
+import {$, ToastDefaultConfig, ToastGlobalConfig} from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
 
 import PulseLoader from 'vue-spinner/src/PulseLoader.vue'
@@ -60,6 +60,15 @@ $.modal.defaultCloseOutside = true
 
 $.tip.defaultTransition = 'fade'
 $.tip.defaultWidth = 100
+
+const customConfig = {
+  position: 'leftTop',
+}
+
+$.snotify.setDefaults({
+  global: ToastGlobalConfig,
+  toast: {...ToastDefaultConfig, ...customConfig} as any,
+})
 
 AWS.config.update({region: AwsGlobal.DEFAULT_REGION})
 // AWS.config.logger = console
