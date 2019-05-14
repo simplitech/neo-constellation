@@ -14,6 +14,7 @@ export enum ErrorCode {
     ON_CHANGE_HOST_STATE = 204,
     ON_WAIT_FOR = 205,
     ON_GET_IMAGE_ID = 206,
+    ON_SEND_COMMAND = 207,
     HOST_ALREADY_RUNNING = 210,
 
     // Security Group

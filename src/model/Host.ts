@@ -5,6 +5,7 @@ import {
   Log,
   ResponseSerialize,
   RequestExclude,
+  sleep,
 } from '@/simpli'
 import { Region } from '@/enum/Region'
 import { State } from '@/enum/State'
@@ -12,14 +13,17 @@ import { Size } from '@/enum/Size'
 import SecurityGroup from '@/model/SecurityGroup'
 import Application from '@/model/Application'
 import AwsGlobal from '@/model/AwsGlobal'
-import { EC2 } from 'aws-sdk'
+import { CloudWatchLogs as CWL, EC2, SSM } from 'aws-sdk'
 import Initializer from '@/app/Initializer'
 import { Zone } from '@/enum/Zone'
+import { Stream } from '@/enum/Stream'
 import Network from './Network'
 import { uid } from '@/simpli'
 import Exception from './Exception'
 import { ErrorCode } from '@/enum/ErrorCode'
 import { Severity } from '@/helpers/logger.helper'
+import { Command } from 'aws-sdk/clients/ssm'
+import StreamEvent from './StreamEvent'
 
 export default class Host extends Model {
 
@@ -421,11 +425,150 @@ export default class Host extends Model {
   }
 
   /**
+   * Sends a command to the corresponding EC2 instance of this host
+   * @param commands list of commands
+   * @param silent boolean indicating if command output should be logged
+   * @return {Promise<StreamEvent[]} list of StreamEvents from the stdout and stderr
+   * of the corresponding commands, or an empty list if commands weren't found
+   */
+  async sendCommand(commands: string[], silent: boolean = false) {
+
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Region not found.')
+    }
+
+    const payload = {
+      DocumentName: 'AWS-RunShellScript',
+      Comment: silent ? 'silent' : '',
+      CloudWatchOutputConfig: {
+        CloudWatchLogGroupName: 'command-log',
+        CloudWatchOutputEnabled: !silent,
+      },
+      InstanceIds: [this.instanceId],
+      Parameters: {
+        commands,
+      },
+    }
+
+    const data = await new SSM({region: this.region}).sendCommand(payload).promise()
+
+    if (data && data.Command) {
+
+      await this.waitForCommand(data.Command)
+
+      return await this.getCommandOutputStream(data.Command)
+
+    }
+
+    return []
+  }
+
+  /**
+   * Gets the output of the corresponding EC2 Command
+   * @param input EC2 Command
+   * @return {Promise<StreamEvent[]>} list of StreamEvents from the stdout and stderr
+   * of the corresponding commands
+   */
+  private async getCommandOutputStream(input: Command) {
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Region not found.')
+    }
+
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    if (!input.CommandId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    const outData = this.getStreamLog(input, Stream.OUT)
+    const errData = this.getStreamLog(input, Stream.ERR)
+
+    const values = await Promise.all([outData, errData])
+
+    const stdout = values[0] || []
+    const stderr = values[1] || []
+
+    const log = stdout.concat(stderr).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0))
+
+    return log
+  }
+
+  /**
+   * Gets the output of the corresponding EC2 Command from CloudWatchLogs
+   * @param input EC2 Command
+   * @param stream enum indicating which stream of events to be read (stdout or stderr)
+   * @return {Promise<StreamEvent[]>} list of StreamEvents from the given stream for the given EC2 Command
+   */
+  private async getStreamLog(input: Command, stream: Stream) {
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Region not found.')
+    }
+
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    if (!input.CommandId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    const streamLog: StreamEvent[] = []
+    let streamPath: string = ''
+
+    switch (stream) {
+      case Stream.OUT:
+        streamPath = `${input.CommandId}/${this.instanceId}/aws-runShellScript/stdout`
+        break
+      case Stream.ERR:
+        streamPath = `${input.CommandId}/${this.instanceId}/aws-runShellScript/stderr`
+        break
+    }
+
+    const payload = {
+      logGroupName: Host.DEFAULT_LOG_GROUP, /* required */
+      logStreamName: streamPath, /* required */
+      startFromHead: true,
+    }
+
+    try {
+      const data = await new CWL({region: this.region!}).getLogEvents(payload).promise()
+
+      if (data && data.events) {
+
+        for (const rawEvent of data.events) {
+          const formattedEvent = new StreamEvent()
+
+          formattedEvent.timestamp = rawEvent.timestamp!
+          formattedEvent.message = (rawEvent.message as string).split(/(?:\n|\r)/g)
+          formattedEvent.stream = stream
+
+          streamLog.push(formattedEvent)
+        }
+      }
+    } catch (error) {
+      // Ignores ResourceNotFoundException, because if a command doesn't
+      // give any output in the given stream (no errors, for example, so stderr is empty),
+      // it throws this exception
+      if (error.code !== 'ResourceNotFoundException') throw error
+    }
+
+    return streamLog
+  }
+
+  /**
    * Gets the AWS ID for the given Amazon Machine Image (AMI) name.
    * @param {string | undefined} imageName Name of the Amazon Machine Image (AMI)
    * @return {string | null} AWS ID of the AMI (ami-xxxxxxxxxxxxxxxxx) or null if not found
    */
-  private async getImageId(imageName ?: string) {
+  private async getImageId(imageName?: string) {
 
     if (!this.region) {
       throw new Exception(ErrorCode.ON_GET_IMAGE_ID, this.$id, 'Region not found.')
@@ -583,6 +726,59 @@ export default class Host extends Model {
       && data.Reservations[0]!.Instances
       && data.Reservations[0]!.Instances![0]
       && data.Reservations[0]!.Instances![0].InstanceId)
+  }
+
+  private async waitForCommand(input: Command) {
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Region not found.')
+    }
+
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    if (!input.CommandId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    const payload = {
+      CommandId: input.CommandId,
+      InstanceId: this.instanceId,
+    }
+
+    let command = input
+
+    const ssm = new SSM({region: this.region})
+
+    // Waits for command status
+    let attempts = 0
+
+    while (command.Status &&
+      command.Status === 'Pending' ||
+      command.Status === 'In Progress' ||
+      command.Status === 'Delayed') {
+
+      attempts++
+
+      if (attempts > Host.MAX_ATTEMPTS ) {
+        abort('system.error.timeOut')
+      }
+
+      const data = await ssm.listCommands(payload).promise()
+
+      if (data && data.Commands && data.Commands.length) {
+        const respCommand = data.Commands.find( (c) => c.CommandId === command.CommandId)
+
+        if (respCommand) {
+          command = respCommand
+        }
+
+      }
+
+      await sleep(1000)
+    }
+
   }
 
 }
