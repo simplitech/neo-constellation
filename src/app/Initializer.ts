@@ -7,6 +7,7 @@ const RSA = require('node-rsa')
 export default abstract class Initializer {
 
     static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
+    static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
     static readonly DEFAULT_KEY_NAME = 'NeoKey'
     static readonly DEFAULT_ASSUME_ROLE_POLICY = {
         Version: '2012-10-17',
@@ -55,7 +56,9 @@ export default abstract class Initializer {
             }).promise()
 
         } catch (e) {
-            if (e.code === 'BucketAlreadyExists' || e.code === 'BucketAlreadyOwnedByYou') return
+            if (e.code === 'BucketAlreadyExists'
+            || e.code === 'BucketAlreadyOwnedByYou'
+            || e.code === 'IllegalLocationConstraintException') return
             throw (e)
         }
     }
@@ -128,9 +131,23 @@ export default abstract class Initializer {
                 AssumeRolePolicyDocument: JSON.stringify(Initializer.DEFAULT_ASSUME_ROLE_POLICY),
                 RoleName: Initializer.DEFAULT_INSTANCE_PROFILE_NAME,
             }).promise()
+
         } catch (e) {
-            if (e.code === 'EntityAlreadyExists') return
-            throw (e)
+            if (e.code !== 'EntityAlreadyExists') {
+                throw (e)
+            }
+        }
+
+        try {
+            await AwsGlobal.iam.attachRolePolicy({
+                RoleName: Initializer.DEFAULT_INSTANCE_PROFILE_NAME,
+                PolicyArn: Initializer.DEFAULT_POLICY_ARN,
+            }).promise()
+
+        } catch (e) {
+            if (e.code !== 'EntityAlreadyExists') {
+                throw (e)
+            }
         }
 
     }

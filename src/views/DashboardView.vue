@@ -240,7 +240,8 @@ export default class DashboardView extends Vue {
 
   async test() {
     const net = new Network()
-    await net.persist()
+    await net.get('2-g9vC-Gq')
+    /*await net.persist()
 
     const ir = new Rule()
     ir.source = '0.0.0.0/0'
@@ -248,7 +249,7 @@ export default class DashboardView extends Vue {
     ir.portRangeEnd = 8443
 
     const sg = new SecurityGroup()
-    sg.name = 'SuperSG'
+    sg.name = 'ConstellationSG'
     await sg.addRule(RuleType.INBOUND, ir)
 
     await net.addSecurityGroup(sg)
@@ -257,27 +258,21 @@ export default class DashboardView extends Vue {
     host1.region = Region.SA_EAST_1
     host1.securityGroup = net.securityGroups[0]
     host1.size = Size.T2_NANO
-    host1.name = 'SuperHost1'
+    host1.name = 'ConstellationHost1'
 
     await net.addHost(host1)
 
-    const host2 = new Host()
-    host2.region = Region.US_EAST_1
-    host2.securityGroup = net.securityGroups[0]
-    host2.size = Size.T2_NANO
-    host2.name = 'SuperHost2'
+    await net.build()*/
 
-    await net.addHost(host2)
+    if (net.hosts[0]) {
+      const commands = ['echo e', 'ls']
 
-    await net.build()
+      const output = await net.hosts[0].sendCommand(commands)
 
-    const host3 = new Host()
-    host3.region = Region.US_EAST_2
-    host3.securityGroup = net.securityGroups[0]
-    host3.size = Size.T2_NANO
-    host3.name = 'SuperHost3'
-
-    await net.addHost(host3)
+      output.forEach( (s) => {
+        console.log(`[${s.stream}] ${s.timelog} ${s.message}`)
+      })
+    }
 
     /*const list = await new Network().list()
 

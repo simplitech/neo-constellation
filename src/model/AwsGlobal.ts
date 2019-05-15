@@ -7,20 +7,20 @@ import {Zone} from '@/enum/Zone'
 
 export default abstract class AwsGlobal {
 
-  static readonly DEFAULT_REGION = Region.SA_EAST_1
+  static readonly DEFAULT_REGION = Region.US_EAST_1
 
-  static ec2: EC2 = new EC2()
-  static iam: IAM = new IAM()
-  static s3: S3 = new S3()
-  static ssm: SSM = new SSM()
+  static ec2: EC2 = new EC2({region: AwsGlobal.DEFAULT_REGION})
+  static iam: IAM = new IAM({region: AwsGlobal.DEFAULT_REGION})
+  static s3: S3 = new S3({region: AwsGlobal.DEFAULT_REGION})
+  static ssm: SSM = new SSM({region: AwsGlobal.DEFAULT_REGION})
 
   /**
    * Reset entities
    */
   static reset() {
-    AwsGlobal.ec2 = new EC2()
-    AwsGlobal.s3 = new S3()
-    AwsGlobal.iam = new IAM()
+    AwsGlobal.ec2 = new EC2({region: AwsGlobal.DEFAULT_REGION})
+    AwsGlobal.s3 = new S3({region: AwsGlobal.DEFAULT_REGION})
+    AwsGlobal.iam = new IAM({region: AwsGlobal.DEFAULT_REGION})
   }
 
   /**
