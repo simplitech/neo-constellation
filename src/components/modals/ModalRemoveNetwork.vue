@@ -1,11 +1,15 @@
 <template>
-  <modal :title="$t('modal.removeApplicationBlueprint.title')"
-         name="removeApplicationBlueprint"
+  <modal :title="$t('modal.removeNetwork.title')"
+         name="removeNetwork"
          @open="openEvent"
          @close="closeEvent"
   >
     <h4>
-      {{ $t('modal.removeApplicationBlueprint.body') }}
+      {{ $t('modal.removeNetwork.body') }}
+    </h4>
+
+    <h4 v-if="network" class="my-10 text-center text-danger">
+      {{network.$tag}}
     </h4>
 
     <hr>
@@ -19,25 +23,27 @@
 
 <script lang="ts">
   import {Component, Prop, Vue} from 'vue-property-decorator'
+  import {$} from '../../simpli'
+  import Network from '@/model/Network'
 
   @Component
-  export default class ModalRemoveApplicationBlueprint extends Vue {
-    payload: any = null
+  export default class ModalRemoveNetwork extends Vue {
+    network: Network | null = null
 
     closeEvent() {
-      this.payload = null
+      this.network = null
 
       this.$emit('close')
     }
 
-    openEvent(payload: any) {
-      this.payload = payload
+    openEvent(network: Network) {
+      this.network = network
 
       this.$emit('open')
     }
 
     confirm() {
-      this.$emit('confirm', this.payload)
+      this.$emit('confirm', this.network)
       this.close()
     }
 
@@ -47,7 +53,7 @@
     }
 
     close() {
-      this.$modal.close('removeApplicationBlueprint')
+      this.$modal.close('removeNetwork')
     }
 
   }

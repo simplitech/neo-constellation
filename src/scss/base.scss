@@ -4,17 +4,21 @@
   box-sizing: border-box;
 }
 
+html {
+  @extend .pal-black.bg;
+}
+
 body {
   @extend .font-open-sans;
   @extend .f-light;
   @extend .pal-black.text;
 
-  font-size: 12px;
+  font-size: 14px;
   margin: 0;
   background: linear-gradient(135deg, #b37ee8 0%, #7b20ca 51%, #390c72 100%);
 
   ::selection {
-    background: lighten($primary-color, 20%);
+    background: $tertiary-color;
   }
 }
 

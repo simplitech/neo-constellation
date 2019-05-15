@@ -216,9 +216,10 @@ export default {
   },
 
   nav: {
+    dashboard: 'Dashboard',
     hosts: 'Hosts',
-    logsDashboard: 'Logs Dashboards',
-    securityGroups: 'Sercurity Groups',
+    logsDashboard: 'Logs Dashboard',
+    securityGroups: 'Security Groups',
     configurationFiles: 'Configuration Files',
     deleteNetwork: 'Delete Network',
   },
@@ -237,11 +238,14 @@ export default {
       title: 'Dashboard',
       createHost: 'Create Host',
       reloadList: 'Reload List',
-      addEmptyHost: 'Add Empty Network',
-      addHostFromStack: 'Add Network from Stack',
+      addEmptyNetwork: 'Add Empty Network',
+      addNetworkFromStack: 'Add Network from Stack',
       newApplication: 'New Application',
       commands: 'Commands',
       containers: 'Containers',
+    },
+    hosts: {
+      addHost: 'Add Host',
     },
     getAppBlueprint: {
       title: 'Application',
@@ -252,6 +256,9 @@ export default {
   },
 
   modal: {
+    persistHost: {
+      title: 'Create Host',
+    },
     persistNetwork: {
       title: 'Create Network',
     },
@@ -267,6 +274,14 @@ export default {
     removeApplicationBlueprint: {
       title: 'Remove Application',
       body: 'Are you sure you want to remove this application?',
+    },
+    removeNetwork: {
+      title: 'Remove Network',
+      body: 'Are you sure you want to remove this network?',
+    },
+    terminateHost: {
+      title: 'Terminate Host',
+      body: 'Are you sure you want to terminate this host? This process cannot be undone.',
     },
   },
 
@@ -307,12 +322,12 @@ export default {
         80: 'Stopped',
       },
       stateClass: {
-        null: 'secondary',
-        0: 'secondary',
+        null: 'tertiary',
+        0: 'tertiary',
         16: 'success',
-        32: 'secondary',
+        32: 'tertiary',
         48: 'danger',
-        64: 'secondary',
+        64: 'tertiary',
         80: 'warning',
       },
     },
@@ -320,9 +335,12 @@ export default {
       title: 'Network',
       columns: {
         $id: 'ID',
-        name: 'Network Name',
+        name: 'Name',
         hosts: 'Hosts',
-        runningSince: 'RunningSince',
+        runningSince: 'Running Since',
+        running: 'Running',
+        notRunning: 'Not Running',
+        build: 'Build Network',
       },
     },
     ApplicationBlueprint: {

@@ -10,12 +10,10 @@
 import {ComponentOptions} from '@/simpli'
 
 import Multiselect from 'vue-multiselect/src/Multiselect.vue'
-import ModalCmd from '@/components/modals/ModalCmd.vue'
 
 /**
  * Global VUE Components
  */
 export const components: ComponentOptions = {
   Multiselect,
-  ModalCmd,
 }

@@ -1,11 +1,9 @@
 import AWS, {EC2, S3, SSM, DynamoDB} from 'aws-sdk'
 import IAM from 'aws-sdk/clients/iam'
 import {AvailabilityZone, Region as RegionAws} from 'aws-sdk/clients/ec2'
-import NetworkOld from '@/model/NetworkOld'
 import {Region} from '@/enum/Region'
 import {Size} from '@/enum/Size'
 import {Zone} from '@/enum/Zone'
-import { DocumentClient } from 'aws-sdk/clients/dynamodb'
 
 export default abstract class AwsGlobal {
 

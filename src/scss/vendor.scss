@@ -44,6 +44,28 @@
       color: white !important;
     }
   }
+
+  .multiselect__content-wrapper {
+    min-width: 100%;
+    max-width: calc(100vw - 20px);
+    width: auto;
+
+    &::-webkit-scrollbar {
+      height: 15px;
+      width: 15px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: $tertiary-color;
+      border: none;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: $primary-color;
+      border: solid 3px $tertiary-color;
+      border-radius: 10px;
+    }
+  }
 }
 
 // Vue Tooltip

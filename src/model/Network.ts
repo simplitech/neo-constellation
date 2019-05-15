@@ -20,6 +20,13 @@ export default class Network extends S3Wrapper {
 
   $id: string | null = null
 
+  get $tag() {
+    if (this.name) {
+      return `${this.$id} (${this.name})`
+    }
+    return this.$id
+  }
+
   @ValidationRequired()
   name: string | null = null
 

@@ -9,6 +9,7 @@ import Initializer from '@/app/Initializer'
 import Network from '@/model/Network'
 import ApplicationBlueprint from '@/model/ApplicationBlueprint'
 import Stack from '@/model/Stack'
+import {App} from '@/app/App'
 
 // initial state
 const state: AuthState = {
@@ -35,7 +36,7 @@ const state: AuthState = {
 // getters
 const getters: GetterTree<AuthState, RootState> = {
   isLogged: ({accessKeyId, secretAccessKey}) => !!accessKeyId && !!secretAccessKey,
-  hasEnvironment: ({environmentId, environment}) => !!environmentId,
+  hasEnvironment: ({environmentId, environment}) => !!environmentId && !!environment,
 
   accessKeyId: ({accessKeyId}) => accessKeyId,
   secretAccessKey: ({secretAccessKey}) => secretAccessKey,
@@ -113,7 +114,7 @@ const actions: ActionTree<AuthState, RootState> = {
 
       commit('POPULATE_USER', user)
 
-      await dispatch('initEnvironment')
+      await dispatch('refreshEnvironment')
 
       state.eventListener.auth.forEach((item) => item())
     } else {
@@ -139,7 +140,7 @@ const actions: ActionTree<AuthState, RootState> = {
     }
   },
 
-  initEnvironment: async ({commit, getters}) => {
+  refreshEnvironment: async ({commit, getters}) => {
     commit('POPULATE_ENVIRONMENT_ID')
 
     if (getters.environmentId) {
@@ -157,12 +158,12 @@ const actions: ActionTree<AuthState, RootState> = {
   enterEnvironment: async ({commit, getters, dispatch}, id: string) => {
     localStorage.setItem('environmentId', id)
 
-    push('/network')
-
-    await dispatch('initEnvironment')
+    await dispatch('refreshEnvironment')
 
     if (getters.hasEnvironment) {
       $.snotify.info(`Entering into environment ${getters.environmentId}`)
+
+      push('/network')
     }
   },
 
@@ -213,18 +214,6 @@ const actions: ActionTree<AuthState, RootState> = {
    */
   syncStacks: async ({commit}) => {
     commit('POPULATE_STACKS', await new Stack().list())
-  },
-
-  /**
-   * Verifies all the floating states and prepares them to the state
-   */
-  manageFloatingStates: ({state}) => {
-    for (const network of state.networks) {
-      for (const host of network.hosts) {
-        const fetch = async () => await host.manageState()
-        $.await.run(fetch, `host_${host.$id}`)
-      }
-    }
   },
 
   /**

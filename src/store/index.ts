@@ -6,8 +6,6 @@ import {auth} from '@/store/modules/auth'
 
 Vue.use(Vuex)
 
-const debug = process.env.NODE_ENV !== 'production'
-
 const setup: StoreOptions<RootState> = {
   state, // root state
   getters, // root getters
@@ -16,7 +14,7 @@ const setup: StoreOptions<RootState> = {
   modules: {
     auth,
   },
-  strict: debug,
+  strict: false,
 }
 
 export const store = new Vuex.Store<RootState>(setup)

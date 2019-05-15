@@ -62,7 +62,7 @@ $.tip.defaultTransition = 'fade'
 $.tip.defaultWidth = 100
 
 const customConfig = {
-  position: 'leftTop',
+  position: 'leftBottom',
 }
 
 $.snotify.setDefaults({

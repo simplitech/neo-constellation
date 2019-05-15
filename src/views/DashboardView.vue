@@ -2,8 +2,8 @@
   <section class="container" v-if="!hasEnvironment">
 
     <transition-expand>
-      <await class="min-h-100" init name="listNetwork" effect="fade-up">
-        <div class="row horiz items-center">
+      <await class="min-h-100" name="listNetwork">
+        <div class="row horiz items-center" v-if="networks.length">
           <div class="col weight-1">
             <h2>
               <i class="fas fa-network-wired"></i>
@@ -11,18 +11,18 @@
             </h2>
           </div>
           <div class="col">
-            <button class="primary" @click="addHostFromStack">
-              {{$t('view.dashboard.addHostFromStack')}}
+            <button class="primary" @click="addNetworkFromStack">
+              {{$t('view.dashboard.addNetworkFromStack')}}
             </button>
           </div>
           <div class="col">
-            <button class="primary" @click="addEmptyHost">
-              {{$t('view.dashboard.addEmptyHost')}}
+            <button class="primary" @click="addEmptyNetwork">
+              {{$t('view.dashboard.addEmptyNetwork')}}
             </button>
           </div>
           <div class="col">
             <button class="primary" @click="test">
-              Teste
+              Dev Test
             </button>
           </div>
         </div>
@@ -34,11 +34,8 @@
             </div>
 
             <div class="weight-1 horiz gutter-10 mx-10">
-              <div class="label primary force-my-1">
-                <div class="label-prefix">
-                  {{$t('classes.Network.columns.$id')}}
-                </div>
-                <span>{{network.$id}}</span>
+              <div class="py-5" :class="network.isRunning ? 'text-success' : 'text-danger'">
+                <i class="fa fa-circle"></i>
               </div>
 
               <div class="label primary force-my-1">
@@ -46,6 +43,13 @@
                   {{$t('classes.Network.columns.name')}}
                 </div>
                 <span>{{network.name}}</span>
+              </div>
+
+              <div class="label primary force-my-1">
+                <div class="label-prefix">
+                  <i class="fa fa-database"></i>
+                </div>
+                <span>{{network.hosts.length}}</span>
               </div>
             </div>
 
@@ -58,8 +62,8 @@
     </transition-expand>
 
     <transition-expand>
-      <await class="min-h-100" init name="listApplicationBlueprint" effect="fade-up">
-        <div class="row horiz items-center">
+      <await class="min-h-100" name="listApplicationBlueprint">
+        <div class="row horiz items-center" v-if="appBlueprints.length">
           <div class="col weight-1">
             <h2>
               <i class="fas fa-drafting-compass"></i>
@@ -188,7 +192,6 @@ export default class DashboardView extends Vue {
   @Getter('auth/appBlueprints') appBlueprints!: ApplicationBlueprint[]
   @Getter('auth/hasEnvironment') hasEnvironment!: boolean
 
-  @Action('auth/syncNetworks') syncNetworks!: Function
   @Action('auth/syncAppBlueprints') syncAppBlueprints!: Function
   @Action('auth/enterEnvironment') enterEnvironment!: Function
 
@@ -198,22 +201,11 @@ export default class DashboardView extends Vue {
     }
   }
 
-  async mounted() {
-    await this.populate()
-  }
-
-  async populate() {
-    if (!this.hasEnvironment) {
-      this.syncNetworks()
-      this.syncAppBlueprints()
-    }
-  }
-
-  async addEmptyHost() {
+  async addEmptyNetwork() {
     this.$modal.open('persistNetwork')
   }
 
-  async addHostFromStack() {
+  async addNetworkFromStack() {
     /**/
   }
 
@@ -277,6 +269,8 @@ export default class DashboardView extends Vue {
 
     await net.addHost(host2)
 
+    await net.build()
+
     const host3 = new Host()
     host3.region = Region.US_EAST_2
     host3.securityGroup = net.securityGroups[0]
@@ -284,8 +278,6 @@ export default class DashboardView extends Vue {
     host3.name = 'SuperHost3'
 
     await net.addHost(host3)
-
-    await net.build()
 
     /*const list = await new Network().list()
 

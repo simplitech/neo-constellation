@@ -1,11 +1,16 @@
 <template>
-  <modal :title="$t('modal.removeApplicationBlueprint.title')"
-         name="removeApplicationBlueprint"
+  <modal :title="$t('modal.terminateHost.title')"
+         name="terminateHost"
          @open="openEvent"
          @close="closeEvent"
   >
     <h4>
-      {{ $t('modal.removeApplicationBlueprint.body') }}
+      {{ $t('modal.terminateHost.body') }}
+    </h4>
+
+    <h4 v-if="host" class="my-10 text-center text-danger">
+      {{host.instanceId}}
+      ({{host.name}})
     </h4>
 
     <hr>
@@ -19,25 +24,26 @@
 
 <script lang="ts">
   import {Component, Prop, Vue} from 'vue-property-decorator'
+  import Host from '@/model/Host'
 
   @Component
-  export default class ModalRemoveApplicationBlueprint extends Vue {
-    payload: any = null
+  export default class ModalTerminateHost extends Vue {
+    host: Host | null = null
 
     closeEvent() {
-      this.payload = null
+      this.host = null
 
       this.$emit('close')
     }
 
-    openEvent(payload: any) {
-      this.payload = payload
+    openEvent(host: Host) {
+      this.host = host
 
       this.$emit('open')
     }
 
     confirm() {
-      this.$emit('confirm', this.payload)
+      this.$emit('confirm', this.host)
       this.close()
     }
 
@@ -47,7 +53,7 @@
     }
 
     close() {
-      this.$modal.close('removeApplicationBlueprint')
+      this.$modal.close('terminateHost')
     }
 
   }

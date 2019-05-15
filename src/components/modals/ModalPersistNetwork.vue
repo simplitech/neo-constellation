@@ -2,6 +2,7 @@
   <modal :title="$t('modal.persistNetwork.title')" name="persistNetwork" @open="openEvent" @close="closeEvent">
     <div class="horiz">
       <input-text autofocus class="weight-1 contrast required"
+                  type="text"
                   :label="$t('classes.Network.columns.name')"
                   v-model="network.name"/>
     </div>

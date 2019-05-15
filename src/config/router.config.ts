@@ -12,10 +12,13 @@ import {RouterOptions} from 'vue-router'
 import DefaultPanelLayout from '@/views/layouts/DefaultPanelLayout.vue'
 import SignInView from '@/views/SignInView.vue'
 import DashboardView from '@/views/DashboardView.vue'
-import NetworkView from '@/views/NetworkView.vue'
 import GetAppBlueprintView from '@/views/get/GetAppBlueprintView.vue'
-// import PersistNodeView from '@/views/PersistNodeView.vue'
-// import LogDashboard from '@/views/LogDashboard.vue'
+
+import NetworkLayout from '@/views/layouts/NetworkLayout.vue'
+import HostView from '@/views/networks/HostsView.vue'
+import LogsDashboardView from '@/views/networks/LogsDashboardView.vue'
+import SecurityGroupsView from '@/views/networks/SecurityGroupsView.vue'
+import ConfigurationFilesView from '@/views/networks/ConfigurationFilesView.vue'
 
 /**
  * VUE Router Configuration
@@ -38,8 +41,30 @@ export const router: RouterOptions = {
         },
         {
           path: '/network',
-          name: 'network',
-          component: NetworkView,
+          redirect: '/network/hosts',
+          component: NetworkLayout,
+          children: [
+            {
+              path: '/network/hosts',
+              name: 'host',
+              component: HostView,
+            },
+            {
+              path: '/network/logs-dashboard',
+              name: 'logsDashboard',
+              component: LogsDashboardView,
+            },
+            {
+              path: '/network/security-groups',
+              name: 'securityGroups',
+              component: SecurityGroupsView,
+            },
+            {
+              path: '/network/configuration-files',
+              name: 'configurationFiles',
+              component: ConfigurationFilesView,
+            },
+          ],
         },
         {
           path: '/app-blueprint/:id',
@@ -47,8 +72,6 @@ export const router: RouterOptions = {
           component: GetAppBlueprintView,
           props: true,
         },
-        // {path: '/node/new', component: PersistNodeView},
-        // {path: '/log', component: LogDashboard},
       ],
     },
     {path: '/', redirect: '/sign-in'},

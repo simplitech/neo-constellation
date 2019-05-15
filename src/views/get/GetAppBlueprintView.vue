@@ -20,7 +20,7 @@
         </button>
       </div>
       <div class="col">
-        <button class="primary" @click="removeApplicationBlueprint(appBlueprint)">
+        <button class="danger" @click="removeApplicationBlueprint(appBlueprint)">
           <i class="fa fa-trash"></i>
           {{$t('view.getAppBlueprint.delete')}}
         </button>

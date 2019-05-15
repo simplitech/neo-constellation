@@ -1,6 +1,3 @@
-import Node from '@/model/Node'
-import {$, abort} from '@/simpli'
-
 export default class Container {
 
   static validate(input: string) {

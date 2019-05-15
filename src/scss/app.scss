@@ -103,8 +103,24 @@
     }
   }
 
+  &.tertiary {
+    @extend .pal-tertiary.bg;
+    @extend .pal-black-50.text;
+
+    .label-button {
+      &:hover, &:focus {
+        @extend .pal-black-20.bg;
+      }
+    }
+
+    .label-prefix, .label-postfix {
+      @extend .pal-tertiary.bg.lighten;
+    }
+  }
+
   &.success {
     @extend .pal-success.bg;
+    @extend .pal-black-50.text;
 
     .label-button {
       &:hover, &:focus {
@@ -220,6 +236,7 @@
     @extend .pal-white-30.border.bottom;
     border-radius: 6px 6px 0 0;
     margin-bottom: 16px;
+    transition: all ease-in 400ms;
 
     &.no-body {
       border: none;

@@ -1,7 +1,7 @@
 import {
   $,
   info,
-  abort,
+  Model,
   Log,
   ResponseSerialize,
   RequestExclude,
@@ -21,7 +21,7 @@ import Exception from './Exception'
 import { ErrorCode } from '@/enum/ErrorCode'
 import { Severity } from '@/helpers/logger.helper'
 
-export default class Host {
+export default class Host extends Model {
 
   get userData() {
     return btoa(`#!/bin/bash\n${this.initialScript}`)
@@ -75,6 +75,8 @@ export default class Host {
   initialScript: string | null =
     'echo test\n'
     + 'echo test2'
+
+  processing = false
 
   /**
    * Populates the current object with information from the actual EC2 instance
@@ -344,23 +346,38 @@ export default class Host {
     const ec2 = new EC2({region})
 
     if (state === null || state === State.PENDING) {
+      $.await.init(`host_${this.$id}`)
+      if (this.processing) return
+      this.processing = true
+
       await ec2.waitFor('instanceRunning', payload).promise()
-
       $.snotify.info(instanceId, $.t('log.host.startedInstances'))
-
       this.state = State.RUNNING
+
+      this.processing = false
+      $.await.done(`host_${this.$id}`)
     } else if (state === State.STOPPING) {
+      $.await.init(`host_${this.$id}`)
+      if (this.processing) return
+      this.processing = true
+
       await ec2.waitFor('instanceStopped', payload).promise()
-
       $.snotify.info(instanceId, $.t('log.host.stoppedInstances'))
-
       this.state = State.STOPPED
+
+      this.processing = false
+      $.await.done(`host_${this.$id}`)
     } else if (state === State.SHUTTING_DOWN) {
+      $.await.init(`host_${this.$id}`)
+      if (this.processing) return
+      this.processing = true
+
       await ec2.waitFor('instanceTerminated', payload).promise()
-
       $.snotify.info(instanceId, $.t('log.host.terminatedInstances'))
-
       this.state = State.TERMINATED
+
+      this.processing = false
+      $.await.done(`host_${this.$id}`)
     }
 
   }
