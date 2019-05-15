@@ -40,7 +40,7 @@
 
               <div class="label primary force-my-1">
                 <div class="label-prefix">
-                  {{$t('classes.Network.columns.name')}}
+                  {{network.$id}}
                 </div>
                 <span>{{network.name}}</span>
               </div>
@@ -87,7 +87,7 @@
 
               <div class="label primary force-my-1">
                 <div class="label-prefix">
-                  {{$t('classes.ApplicationBlueprint.columns.name')}}
+                  {{appBlueprint.$id}}
                 </div>
                 <span>{{appBlueprint.name}}</span>
               </div>

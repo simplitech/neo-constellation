@@ -4,7 +4,8 @@ import {
   Model,
   Log,
   ResponseSerialize,
-  RequestExclude,
+  ValidationRequired,
+  abort,
   sleep,
 } from '@/simpli'
 import { Region } from '@/enum/Region'
@@ -57,12 +58,20 @@ export default class Host extends Model {
   $id: string | null = null
   networkId: string | null = null
   instanceId: string | null = null
+
+  @ValidationRequired()
   name: string | null = null
+
   state: State | null = null
   cpuUsage: number | null = null
   ramUsage: number | null = null
+
+  @ValidationRequired()
   size: Size | null = null
+
+  @ValidationRequired()
   region: Region | null = null
+
   availabilityZone: Zone | null = null
 
   ipv4: string | null = null
@@ -70,6 +79,7 @@ export default class Host extends Model {
 
   imageId: string | null = null
 
+  @ValidationRequired()
   @ResponseSerialize(SecurityGroup)
   securityGroup: SecurityGroup | null = null
 

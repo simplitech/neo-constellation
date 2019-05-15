@@ -1,5 +1,5 @@
 <template>
-  <modal :title="$t('modal.persistNetwork.title')" name="persistNetwork" @open="openEvent" @close="closeEvent">
+  <modal :title="$t('modal.persistNetwork.title')" name="persistNetwork" @open="openEvent" @close="closeEvent" :closable="false">
     <div class="horiz">
       <input-text autofocus class="weight-1 contrast required"
                   type="text"

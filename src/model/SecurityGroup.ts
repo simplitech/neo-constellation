@@ -16,6 +16,13 @@ export interface RealSecurityGroup {
 
 export default class SecurityGroup {
 
+  get $tag() {
+    if (this.name) {
+      return `${this.$id} (${this.name})`
+    }
+    return this.$id
+  }
+
   $id: string | null = null
   name: string | null = null
   networkId: string | null = null

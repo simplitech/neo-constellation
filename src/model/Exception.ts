@@ -1,3 +1,4 @@
+import {$} from '@/simpli'
 import { ErrorCode } from '@/enum/ErrorCode'
 import { ErrorType } from '@/enum/ErrorType'
 
@@ -15,6 +16,7 @@ export default class Exception extends Error {
     this.errorCode = errorCode
     this.id = id || null
 
+    $.snotify.error(message, errorCode)
   }
 
   ofType(type: ErrorType): Boolean {

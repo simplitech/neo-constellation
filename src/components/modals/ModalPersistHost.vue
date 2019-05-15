@@ -1,37 +1,46 @@
 <template>
-  <modal :title="$t('modal.persistHost.title')" name="persistHost" @open="openEvent" @close="closeEvent">
+  <modal :title="$t('modal.persistHost.title')" name="persistHost" @open="openEvent" @close="closeEvent" :closable="false">
 
     <div>
       <div class="row horiz">
         <div class="col weight-1">
-          <input-text type="text" class="contrast" v-model="host.name">
+          <input-text type="text" class="required contrast" v-model="host.name">
             {{ $t('classes.Host.columns.name') }}
           </input-text>
         </div>
 
         <div class="col weight-1">
-          <input-select class="contrast"
-                        :label="$t('classes.Host.columns.size')"
-                        v-model="sizeResource"
-                        :items="allSize.items"/>
+          <input-select class="required contrast"
+                        :label="$t('classes.Host.columns.region')"
+                        v-model="regionResource"
+                        :items="allRegion.items"/>
         </div>
       </div>
 
       <div class="row horiz">
         <div class="col weight-1">
-          <input-select class="contrast"
-                        :label="$t('classes.Host.columns.region')"
-                        v-model="regionResource"
-                        :items="allRegion.items"/>
+          <input-select class="required contrast"
+                        :label="$t('classes.Host.columns.size')"
+                        v-model="sizeResource"
+                        :items="allSize.items"/>
         </div>
 
         <div class="col weight-1">
-          <await name="availabilityZones" spinner="BeatLoader">
+          <await name="availabilityZones" spinner="BeatLoader" spinnerColor="#59BF00">
             <input-select class="contrast"
                           :label="$t('classes.Host.columns.availabilityZone')"
-                          v-model="zoneResource"
+                          v-model="host.availabilityZone"
                           :items="allZone.items"/>
           </await>
+        </div>
+      </div>
+
+      <div class="row horiz">
+        <div class="col weight-1">
+          <input-select class="required contrast"
+                        :label="$t('classes.Host.columns.securityGroup')"
+                        v-model="host.securityGroup"
+                        :items="allSG"/>
         </div>
       </div>
 
@@ -52,7 +61,7 @@
 </template>
 
 <script lang="ts">
-  import {Component, Prop, Vue} from 'vue-property-decorator'
+  import {Component, Watch, Vue} from 'vue-property-decorator'
   import {Getter, Action} from 'vuex-class'
   import {$, clone, IResource, ObjectCollection} from '@/simpli'
   import Host from '@/model/Host'
@@ -60,16 +69,25 @@
   import {Size} from '@/enum/Size'
   import {Zone} from '@/enum/Zone'
   import Network from '@/model/Network'
+  import SecurityGroup from '@/model/SecurityGroup'
+  import AwsGlobal from '@/model/AwsGlobal'
 
   @Component
   export default class ModalPersistHost extends Vue {
     @Getter('auth/environment') environment!: Network | null
 
-    host = new Host()
+    host = new Host() as Host
 
     allRegion = new ObjectCollection(Region).prependNull('')
     allSize = new ObjectCollection(Size).prependNull('')
-    allZone = new ObjectCollection(Zone).prependNull('')
+    allZone: Zone[] = []
+
+    get allSG() {
+      if (this.environment) {
+        return this.environment.securityGroups
+      }
+      return []
+    }
 
     get regionResource() {
       return this.allRegion.get(this.host.region)
@@ -85,20 +103,24 @@
       this.host.size = val && val.$id as Size || null
     }
 
-    get zoneResource() {
-      return this.allZone.get(this.host.availabilityZone)
-    }
-    set zoneResource(val: IResource | null) {
-      this.host.availabilityZone = val && val.$id as Zone || null
+    @Watch('host.region')
+    async regionEvent(val: Region | null) {
+      this.host.availabilityZone = null
+
+      const fetch = async () => {
+        this.allZone = await AwsGlobal.availabilityZones(val || undefined)
+      }
+
+      await $.await.run(fetch, 'availabilityZones', 1000)
     }
 
     closeEvent() {
-      this.host = new Host()
+      this.host = new Host() as Host
       this.$emit('close')
     }
 
     openEvent() {
-      this.host = new Host()
+      this.host = new Host() as Host
       this.$emit('open')
     }
 
@@ -108,8 +130,11 @@
 
     async submit() {
       this.host.networkId = this.environment && this.environment.$id || null
-      await this.host.validate()
-      await this.host.create()
+      const fetch = async () => {
+        await this.host.validate()
+        await this.environment.addHost(this.host)
+      }
+      await $.await.run(fetch, 'submit')
       this.close()
     }
   }

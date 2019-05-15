@@ -80,7 +80,7 @@
                 <i class="fas fa-network-wired"></i>
               </div>
               <div class="text-center">
-                {{ environment.name }}
+                {{ environment.$tag }}
 
                 <br>
 
@@ -185,7 +185,7 @@
                   <i class="fas fa-network-wired"></i>
                 </div>
                 <div class="text-center">
-                  {{ environment.name }}
+                  {{ environment.$tag }}
 
                   <br>
 

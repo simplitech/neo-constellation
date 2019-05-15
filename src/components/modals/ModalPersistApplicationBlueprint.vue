@@ -1,6 +1,6 @@
 <template>
   <modal :title="title" name="persistApplicationBlueprint" @open="openEvent"
-         @close="closeEvent" :closeOutside="false">
+         @close="closeEvent" :closable="false">
     <div class="horiz gutter-10">
       <input-text autofocus class="weight-1 contrast required"
                   type="text"

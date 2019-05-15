@@ -300,6 +300,7 @@ export default {
         idNetwork: 'Network ID',
         imageId: 'OS Image ID',
         securityGroupId: 'SG ID',
+        securityGroup: 'Security Group',
         name: 'Name',
         size: 'Size',
         region: 'Region',
