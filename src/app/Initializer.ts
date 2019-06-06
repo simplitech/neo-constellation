@@ -1,13 +1,15 @@
-import { $, getUser } from '@/simpli'
+import { $, getUser, Log, Severity } from '@/simpli'
 import AwsGlobal from '@/model/AwsGlobal'
-import { EC2 } from 'aws-sdk'
+import { EC2, SSM } from 'aws-sdk'
+import {Region} from '@/enum/Region'
 
 const RSA = require('node-rsa')
 
 export default abstract class Initializer {
 
     static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
-    static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+    static readonly DEFAULT_EC2_ROLE_SSM_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
+    static readonly DEFAULT_CWA_ROLE_SSM_ARN = 'arn:aws:iam::aws:policy/CloudWatchAgentServerPolicy'
     static readonly DEFAULT_KEY_NAME = 'NeoKey'
     static readonly DEFAULT_ASSUME_ROLE_POLICY = {
         Version: '2012-10-17',
@@ -21,20 +23,84 @@ export default abstract class Initializer {
             },
         ],
     }
+    static readonly DEFAULT_PARAMETER_NAME = 'AmazonCloudWatch-linux'
+    static readonly DEFAULT_PARAMETER_TYPE = 'String'
+    static readonly DEFAULT_PARAMETER_VALUE = {
+      metrics: {
+        append_dimensions: {
+          AutoScalingGroupName: '${aws:AutoScalingGroupName}',
+          ImageId: '${aws:ImageId}',
+          InstanceId: '${aws:InstanceId}',
+          InstanceType: '${aws:InstanceType}',
+        },
+        metrics_collected: {
+          collectd: {
+            metrics_aggregation_interval: 0,
+          },
+          cpu: {
+            measurement: [
+              'cpu_usage_idle',
+              'cpu_usage_iowait',
+              'cpu_usage_user',
+              'cpu_usage_system',
+            ],
+            metrics_collection_interval: 10,
+            totalcpu: false,
+          },
+          disk: {
+            measurement: [
+              'used_percent',
+              'inodes_free',
+            ],
+            metrics_collection_interval: 10,
+            resources: [
+              '*',
+            ],
+          },
+          diskio: {
+            measurement: [
+              'io_time',
+            ],
+            metrics_collection_interval: 10,
+            resources: [
+              '*',
+            ],
+          },
+          mem: {
+            measurement: [
+              'mem_used_percent',
+            ],
+            metrics_collection_interval: 10,
+          },
+          statsd: {
+            metrics_aggregation_interval: 0,
+            metrics_collection_interval: 10,
+            service_address: ':8125',
+          },
+          swap: {
+            measurement: [
+              'swap_used_percent',
+            ],
+            metrics_collection_interval: 10,
+          },
+        },
+      },
+    }
 
     static async init() {
+        // Region list
+        const regions = await AwsGlobal.regions()
+
         // Initializes bucket
         await this.initBucket()
 
         // Initializes key pairs
         await this.initS3KeyPair()
-        const regions = await AwsGlobal.regions()
 
-        const promises = []
+        let promises = []
         for (const region of regions) {
             $.snotify.info($.t('log.host.importKeyPair', [region]))
-            AwsGlobal.switchRegion(region)
-            promises.push(this.initEC2KeyPair(new EC2()))
+            promises.push(this.initEC2KeyPair(region))
         }
         await Promise.all(promises)
 
@@ -43,6 +109,12 @@ export default abstract class Initializer {
 
         // Initializes instance profile
         await this.initInstanceProfile()
+
+        // Initializes parameter store
+        promises = []
+        for (const region of regions) {
+            promises.push(this.initParameterStore(region))
+        }
     }
 
     private static async initBucket() {
@@ -103,7 +175,7 @@ export default abstract class Initializer {
         }
     }
 
-    private static async initEC2KeyPair(ec2: EC2) {
+    private static async initEC2KeyPair(region: Region) {
         try {
 
             const privateKey = (await AwsGlobal.s3.getObject({
@@ -113,7 +185,7 @@ export default abstract class Initializer {
 
             const publicKey = new RSA(privateKey).exportKey('public').slice(27, -25)
 
-            await ec2.importKeyPair({
+            await new EC2({region}).importKeyPair({
                 KeyName: Initializer.DEFAULT_KEY_NAME,
                 PublicKeyMaterial: publicKey,
             }).promise()
@@ -141,7 +213,7 @@ export default abstract class Initializer {
         try {
             await AwsGlobal.iam.attachRolePolicy({
                 RoleName: Initializer.DEFAULT_INSTANCE_PROFILE_NAME,
-                PolicyArn: Initializer.DEFAULT_POLICY_ARN,
+                PolicyArn: Initializer.DEFAULT_EC2_ROLE_SSM_ARN,
             }).promise()
 
         } catch (e) {
@@ -149,6 +221,18 @@ export default abstract class Initializer {
                 throw (e)
             }
         }
+
+        try {
+          await AwsGlobal.iam.attachRolePolicy({
+              RoleName: Initializer.DEFAULT_INSTANCE_PROFILE_NAME,
+              PolicyArn: Initializer.DEFAULT_CWA_ROLE_SSM_ARN,
+          }).promise()
+
+      } catch (e) {
+          if (e.code !== 'EntityAlreadyExists') {
+              throw (e)
+          }
+      }
 
     }
 
@@ -167,5 +251,21 @@ export default abstract class Initializer {
             throw (e)
         }
 
+    }
+
+    private static async initParameterStore(region: Region) {
+      try {
+        const resp = await new SSM({region}).putParameter({
+          Name: Initializer.DEFAULT_PARAMETER_NAME,
+          Type: Initializer.DEFAULT_PARAMETER_TYPE,
+          Value: JSON.stringify(Initializer.DEFAULT_PARAMETER_VALUE),
+          Overwrite: true,
+        }).promise()
+
+        Log(Severity.INFO, resp)
+      } catch (e) {
+        Log(Severity.ERROR, `Error on creating parameter store: ${e}'.`)
+        throw (e)
+      }
     }
 }

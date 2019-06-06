@@ -15,6 +15,8 @@ export enum ErrorCode {
     ON_WAIT_FOR = 205,
     ON_GET_IMAGE_ID = 206,
     ON_SEND_COMMAND = 207,
+    ON_INSTALL_CWA_PACKAGE = 208,
+    ON_START_CWA_PACKAGE = 209,
     HOST_ALREADY_RUNNING = 210,
 
     // Security Group
