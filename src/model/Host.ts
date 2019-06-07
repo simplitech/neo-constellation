@@ -13,8 +13,7 @@ import { State } from '@/enum/State'
 import { Size } from '@/enum/Size'
 import SecurityGroup from '@/model/SecurityGroup'
 import Application from '@/model/Application'
-import AwsGlobal from '@/model/AwsGlobal'
-import { CloudWatchLogs as CWL, EC2, SSM } from 'aws-sdk'
+import { CloudWatch as CW, CloudWatchLogs as CWL, EC2, SSM } from 'aws-sdk'
 import Initializer from '@/app/Initializer'
 import { Zone } from '@/enum/Zone'
 import { Stream } from '@/enum/Stream'
@@ -29,7 +28,7 @@ import StreamEvent from './StreamEvent'
 export default class Host extends Model {
 
   get userData() {
-    return btoa(`#!/bin/bash\n${this.initialScript}`)
+    return btoa(`#!/bin/bash\n${Host.DEFAULT_INIT_SCRIPT + this.initialScript}`)
   }
 
   static readonly MAX_ATTEMPTS = 10
@@ -38,21 +37,9 @@ export default class Host extends Model {
   static readonly DEFAULT_RESOURCE_TYPE = 'instance'
   static readonly DEFAULT_AMI_NAME = 'amzn-ami-hvm-2018.03.0.20180811-x86_64-gp2'
   static readonly DEFAULT_NETWORK_TAG = 'idNetwork'
-  static readonly DEFAULT_INSTANCE_PROFILE_NAME = 'neonode-ssm-role'
-  static readonly DEFAULT_POLICY_ARN = 'arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM'
   static readonly DEFAULT_LOG_GROUP = 'command-log'
-  static readonly DEFAULT_ASSUME_ROLE_POLICY = {
-    Version: '2012-10-17',
-    Statement: [
-      {
-        Action: 'sts:AssumeRole',
-        Principal: {
-          Service: 'ec2.amazonaws.com',
-        },
-        Effect: 'Allow',
-      },
-    ],
-  }
+  // TODO: Change init script according to OS
+  static readonly DEFAULT_INIT_SCRIPT = 'sudo yum -y update && sudo yum -y install collectd\n'
   $name: string = 'Host'
 
   $id: string | null = null
@@ -88,7 +75,7 @@ export default class Host extends Model {
 
   initialScript: string | null =
     'echo test\n'
-    + 'echo test2'
+  + 'echo test2'
 
   processing = false
 
@@ -153,9 +140,11 @@ export default class Host extends Model {
         // State
         this.state = instance.State && instance.State.Code || assign('state', this.state)
 
-        // TODO: awsHost.cpuUsage
+        // CPU Usage
+        this.cpuUsage = await this.getCpuUsage()
 
         // TODO: awsHost.ramUsage
+        this.ramUsage = await this.getMemUsage()
 
         // Size
         this.size = instance.InstanceType as Size || assign('size', this.size)
@@ -215,6 +204,24 @@ export default class Host extends Model {
 
     } catch (e) {
       throw new Exception(ErrorCode.ON_ATTACH_INSTANCE_PROFILE, this.$id, e.message)
+    }
+
+    try {
+      await this.installCloudWatchAgentPackage()
+      Log(Severity.INFO, `CloudWatch agent package installed on '${this.$id}' corresponding EC2 instance.`)
+    } catch (e) {
+      // TODO: Treat CWA error for different types of OS
+      // throw new Exception(ErrorCode.ON_INSTALL_CWA_PACKAGE, this.$id, e.message)
+      Log(Severity.WARN, `CloudWatch agent package not installed on '${this.$id}' corresponding EC2 instance.`)
+    }
+
+    try {
+      await this.startCloudWatchAgent()
+      Log(Severity.INFO, `CloudWatch agent package started on '${this.$id}' corresponding EC2 instance.`)
+    } catch (e) {
+      // TODO: Treat CWA error for different types of OS
+      // throw new Exception(ErrorCode.ON_START_CWA_PACKAGE, this.$id, e.message)
+      Log(Severity.WARN, `CloudWatch agent package not started on '${this.$id}' corresponding EC2 instance.`)
     }
 
   }
@@ -717,8 +724,191 @@ export default class Host extends Model {
 
   }
 
+  /**
+   * Installs the CloudWatch Agent Package in the corresponding EC2 instance of this host
+   * through SSM's Run Command functionality for memory usage monitoring
+   * @return {Promise<void>}
+   */
+  private async installCloudWatchAgentPackage() {
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Region not found.')
+    }
+
+    const payload = {
+      DocumentName: 'AWS-ConfigureAWSPackage',
+      InstanceIds: [this.instanceId],
+      Parameters: {
+        action: ['Install'],
+        name: ['AmazonCloudWatchAgent'],
+        version: [''],
+      },
+    }
+
+    const data = await new SSM({region: this.region}).sendCommand(payload).promise()
+
+    if (data && data.Command) {
+      await this.waitForCommand(data.Command)
+    }
+
+  }
+
+  /**
+   * Starts the CloudWatch Agent in the corresponding EC2 instance of this host
+   * through SSM's Run Command functionality for memory usage monitoring
+   * @return {Promise<void>}
+   */
+  private async startCloudWatchAgent() {
+    if (!this.instanceId) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Instance not running.')
+    }
+
+    if (!this.region) {
+      throw new Exception(ErrorCode.ON_SEND_COMMAND, this.$id, 'Region not found.')
+    }
+
+    const payload = {
+      DocumentName: 'AmazonCloudWatch-ManageAgent',
+      InstanceIds: [this.instanceId],
+      Parameters: {
+        action: ['configure'],
+        mode: ['ec2'],
+        optionalConfigurationLocation: [Initializer.DEFAULT_PARAMETER_NAME],
+        optionalConfigurationSource: ['ssm'],
+        optionalRestart: ['yes'],
+      },
+    }
+
+    const data = await new SSM({region: this.region}).sendCommand(payload).promise()
+
+    if (data && data.Command) {
+      await this.waitForCommand(data.Command)
+    }
+  }
+
+  /**
+   * Reads the CPU usage of the corresponding EC2 instance of this host
+   * from CloudWatch metrics
+   * @return {Promise<number | null>} cpuUsage in percent
+   */
+  private async getCpuUsage(): Promise<number | null> {
+    if (!this.instanceId || !this.region || !this.$id) {
+      return null
+    }
+
+    const payload = {
+      EndTime: this.getEndTime(),
+      MetricDataQueries: [
+        {
+          Id: this.$id,
+          MetricStat: {
+            Metric: {
+              Dimensions: [
+                {
+                  Name: 'InstanceId',
+                  Value: this.instanceId,
+                },
+              ],
+              Namespace: 'AWS/EC2',
+              MetricName: 'CPUUtilization',
+            },
+            Period: 10,
+            Stat: 'Average',
+            Unit: 'Percent',
+          },
+        },
+      ],
+      StartTime: this.getStartTime(),
+      ScanBy: 'TimestampDescending',
+    }
+
+    try {
+      const data = await new CW({region: this.region}).getMetricData(payload).promise()
+
+      if (data
+        && data.MetricDataResults
+        && data.MetricDataResults[0]
+        && data.MetricDataResults[0].Values
+        && data.MetricDataResults[0].Values[0]) {
+          return data.MetricDataResults[0].Values[0]
+      }
+
+    } catch (e) {
+      Log(Severity.WARN, `Could not read CPU usage for Host '${this.$id}'`)
+    }
+
+    return null
+
+  }
+
+  /**
+   * Reads the memory usage of the corresponding EC2 instance of this host
+   * from CloudWatch metrics
+   * @return {Promise<number | null>} ramUsage in percent
+   */
+  private async getMemUsage(): Promise<number | null> {
+    if (!this.instanceId || !this.region || !this.$id || !this.imageId || !this.size) {
+      return null
+    }
+
+    const payload = {
+      EndTime: this.getEndTime(),
+      MetricDataQueries: [
+        {
+          Id: this.$id,
+          MetricStat: {
+            Metric: {
+              Dimensions: [
+                {
+                  Name: 'InstanceId',
+                  Value: this.instanceId,
+                },
+                {
+                  Name: 'ImageId',
+                  Value: this.imageId,
+                },
+                {
+                  Name: 'InstanceType',
+                  Value: this.size,
+                },
+              ],
+              Namespace: 'CWAgent',
+              MetricName: 'mem_used_percent',
+            },
+            Period: 10,
+            Stat: 'Average',
+            Unit: 'Percent',
+          },
+        },
+      ],
+      StartTime: this.getStartTime(),
+      ScanBy: 'TimestampDescending',
+    }
+
+    try {
+      const data = await new CW({region: this.region}).getMetricData(payload).promise()
+
+      if (data
+        && data.MetricDataResults
+        && data.MetricDataResults[0]
+        && data.MetricDataResults[0].Values
+        && data.MetricDataResults[0].Values[0]) {
+          return data.MetricDataResults[0].Values[0]
+      }
+
+    } catch (e) {
+      Log(Severity.WARN, `Could not read Memory usage for Host '${this.$id}'`)
+    }
+
+    return null
+
+  }
+
   // Utility
-  private async existsInstance(): Promise < Boolean > {
+  private async existsInstance(): Promise <Boolean> {
     if (!this.instanceId) {
       return false
     }
@@ -789,6 +979,16 @@ export default class Host extends Model {
       await sleep(1000)
     }
 
+  }
+
+  private getEndTime(): Date {
+    const date = new Date()
+    date.setSeconds(date.getSeconds() - date.getSeconds() % 10, 0)
+    return date
+  }
+
+  private getStartTime(): Date {
+    return new Date(this.getEndTime().valueOf() - 240000)
   }
 
 }
